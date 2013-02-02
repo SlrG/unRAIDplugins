@@ -99,19 +99,19 @@ for further explanation.
 
 Bans, quotas, sftp, tls, sql users and more may be possible. The proftpd
 included in my plugin was compiled with the following modules:
-  mod_auth.c		      mod_quotatab.c
-  mod_auth_file.c		  mod_quotatab_file.c
-  mod_auth_unix.c		  mod_quotatab_sql.c
-  mod_ban.c		        mod_readme.c
-  mod_cap.c		        mod_rewrite.c
-  mod_core.c		      mod_sftp.c
-  mod_ctrls.c		      mod_sftp_sql.c
-  mod_ctrls_admin.c		mod_site.c
-  mod_delay.c		      mod_sql.c
-  mod_facts.c		      mod_sql_mysql.c
-  mod_ident.c		      mod_sql_passwd.c
-  mod_log.c		        mod_tls.c
-  mod_ls.c		        mod_xfer.c
+  mod_auth.c          mod_quotatab.c
+  mod_auth_file.c     mod_quotatab_file.c
+  mod_auth_unix.c     mod_quotatab_sql.c
+  mod_ban.c           mod_readme.c
+  mod_cap.c           mod_rewrite.c
+  mod_core.c          mod_sftp.c
+  mod_ctrls.c         mod_sftp_sql.c
+  mod_ctrls_admin.c   mod_site.c
+  mod_delay.c         mod_sql.c
+  mod_facts.c         mod_sql_mysql.c
+  mod_ident.c         mod_sql_passwd.c
+  mod_log.c           mod_tls.c
+  mod_ls.c            mod_xfer.c
 
 In the future it may be possible to get php and sql based user and server
 management tools to work. Feel free to try an please report and share your
@@ -197,10 +197,12 @@ AllowOverwrite          on
 </FILE>
 
 <FILE Name="/usr/local/emhttp/plugins/proftpd/device_status.png">
+<URL>--no-check-certificate https://github.com/SlrG/unRAIDplugins/raw/master/proftpd/device_status.png</URL>
 <LOCAL>/boot/config/plugins/images/device_status.png</LOCAL>
 </FILE>
 
 <FILE Name="/usr/local/emhttp/plugins/proftpd/new_config.png">
+<URL>--no-check-certificate https://github.com/SlrG/unRAIDplugins/raw/master/proftpd/new_config.png</URL>
 <LOCAL>/boot/config/plugins/images/new_config.png</LOCAL>
 </FILE>
 
@@ -231,64 +233,64 @@ SERVICE="disable"
 <![CDATA[
 <?PHP
   $proftpd_cfg = parse_ini_file( "/boot/config/plugins/proftpd/proftpd.cfg" );
-	$proftpd_running = file_exists( "/var/run/proftpd.pid") ? "yes" : "no";
+  $proftpd_running = file_exists( "/var/run/proftpd.pid") ? "yes" : "no";
 ?>
 <div style="width: 49%; float:left">
-	<div id="title">
-		<span class="left">Status:&#32;<img src='/plugins/proftpd/device_status.png'>
-  		<?if ($proftpd_running=="yes"):?>
-					<span class="green"><b>RUNNING</b></span></a>
-			<?else:?>
-					<span class="red"><b>STOPPED</b></span>
-  		<?endif;?>
-		</span>
-	</div>	
-	<?if ($proftpd_running=="yes"):?>
-		<div style="position:relative;float:left;width:50%;text-align:right; margin-bottom:24px">
-			<form name="proftpd_start_stop" method="POST" action="/update.htm" target="progressFrame">
-				<input type="hidden" name="cmd" value="/etc/rc.d/rc.proftpd stop">
-				<input type="submit" name="runCmd" value="Stop">
-			</form>
-		</div>
-		<div style="position:relative;float:left;width:50%;margin-bottom:24px">
-			<form name="proftpd_restart" method="POST" action="/update.htm" target="progressFrame">
-				<input type="hidden" name="cmd" value="/etc/rc.d/rc.proftpd restart">
-				<input type="submit" name="runCmd" value="Restart">
-			</form>
-		</div>
-	<?else:?>
-		<div style="position:relative;float:left;width:100%;text-align:center;margin-bottom:24px">
-			<form name="proftpd_start" method="POST" action="/update.htm" target="progressFrame">
-				<input type="hidden" name="cmd" value="/etc/rc.d/rc.proftpd buttonstart">
-				<input type="submit" name="runCmd" value="Start">
-			</form>
-		</div>
-	<?endif;?>
+  <div id="title">
+    <span class="left">Status:&#32;<img src='/plugins/proftpd/device_status.png'>
+      <?if ($proftpd_running=="yes"):?>
+        <span class="green"><b>RUNNING</b></span></a>
+      <?else:?>
+        <span class="red"><b>STOPPED</b></span>
+      <?endif;?>
+    </span>
+  </div>	
+  <?if ($proftpd_running=="yes"):?>
+    <div style="position:relative;float:left;width:50%;text-align:right; margin-bottom:24px">
+      <form name="proftpd_start_stop" method="POST" action="/update.htm" target="progressFrame">
+        <input type="hidden" name="cmd" value="/etc/rc.d/rc.proftpd stop">
+        <input type="submit" name="runCmd" value="Stop">
+      </form>
+    </div>
+    <div style="position:relative;float:left;width:50%;margin-bottom:24px">
+      <form name="proftpd_restart" method="POST" action="/update.htm" target="progressFrame">
+        <input type="hidden" name="cmd" value="/etc/rc.d/rc.proftpd restart">
+        <input type="submit" name="runCmd" value="Restart">
+      </form>
+    </div>
+  <?else:?>
+    <div style="position:relative;float:left;width:100%;text-align:center;margin-bottom:24px">
+      <form name="proftpd_start" method="POST" action="/update.htm" target="progressFrame">
+        <input type="hidden" name="cmd" value="/etc/rc.d/rc.proftpd buttonstart">
+        <input type="submit" name="runCmd" value="Start">
+      </form>
+    </div>
+  <?endif;?>
 </div>
 <div style="width: 49%; float:right">
-	<div id="title">
-		<span class="left">Configuration:&#32;<img src='/plugins/proftpd/new_config.png'></span>
-	</div>
-	<form name="proftpd_settings" method="POST" action="/update.htm" target="progressFrame">
-		<input type="hidden" name="cmd" value="/etc/rc.d/rc.proftpd">
-		<table class="settings">
-			<tr>
-				<td>Enable ProFTP Daemon:</td>
-				<td>
-					<select name="arg1" size="1">
-						<?=mk_option($proftpd_cfg['SERVICE'], "disable", "No");?>
-						<?=mk_option($proftpd_cfg['SERVICE'], "enable", "Yes");?>
-					</select>
-				</td>
-			</tr>
-		</table>
- 		<div align="center">
-			<hr size="3" align="center" width="75%" color="grey" style="margin-top:20px;margin-bottom:18px" >
-			<input type="submit" name="runCmd" value="Apply" style="margin-bottom:35px">
-			<button type="button" style="margin-bottom:35px" onClick="done();">Done</button>
-		</div>
-	</form>
-	<br />
+  <div id="title">
+    <span class="left">Configuration:&#32;<img src='/plugins/proftpd/new_config.png'></span>
+  </div>
+  <form name="proftpd_settings" method="POST" action="/update.htm" target="progressFrame">
+    <input type="hidden" name="cmd" value="/etc/rc.d/rc.proftpd">
+    <table class="settings">
+      <tr>
+        <td>Enable ProFTP Daemon:</td>
+        <td>
+          <select name="arg1" size="1">
+            <?=mk_option($proftpd_cfg['SERVICE'], "disable", "No");?>
+            <?=mk_option($proftpd_cfg['SERVICE'], "enable", "Yes");?>
+          </select>
+        </td>
+      </tr>
+    </table>
+    <div align="center">
+      <hr size="3" align="center" width="75%" color="grey" style="margin-top:20px;margin-bottom:18px" >
+      <input type="submit" name="runCmd" value="Apply" style="margin-bottom:35px">
+      <button type="button" style="margin-bottom:35px" onClick="done();">Done</button>
+    </div>
+  </form>
+  <br />
 </div>
 ]]>
 </INLINE>
