@@ -1,11 +1,12 @@
-<?xml version='1.0' standalone='yes'?>                                                 
+<?xml version='1.0' standalone='yes'?>
 <PLUGIN>
 <!--
 Copyright 2013, SlrG
 ProFTP Daemon Plugin for unRAID
 
 Version history:
- 2013-02-01 - version 0.1 : First release
+ 2013-02-01 - version 0.1  : First release
+ 2013-02-02 - version 0.1a : Enable download of iconfiles if not yet present. (Thanks overbyrn!)
 
 Plugin file locations:
  /boot/config/plugins/proftpd-0.1-i486.plg                            # this file
