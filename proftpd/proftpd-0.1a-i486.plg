@@ -199,12 +199,10 @@ AllowOverwrite          on
 
 <FILE Name="/usr/local/emhttp/plugins/proftpd/device_status.png">
 <URL>--no-check-certificate https://github.com/SlrG/unRAIDplugins/raw/master/proftpd/device_status.png</URL>
-<LOCAL>/boot/config/plugins/images/device_status.png</LOCAL>
 </FILE>
 
 <FILE Name="/usr/local/emhttp/plugins/proftpd/new_config.png">
 <URL>--no-check-certificate https://github.com/SlrG/unRAIDplugins/raw/master/proftpd/new_config.png</URL>
-<LOCAL>/boot/config/plugins/images/new_config.png</LOCAL>
 </FILE>
 
 <FILE Name="/usr/local/emhttp/plugins/proftpd/proftpd.page">
