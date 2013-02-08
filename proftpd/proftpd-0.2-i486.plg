@@ -7,14 +7,16 @@ ProFTP Daemon Plugin for unRAID
 Version history:
  2013-02-01 - version 0.1  : First release
  2013-02-02 - version 0.1a : Enable download of iconfiles if not yet present. (Thanks overbyrn!)
+ 2013-02-08 - version 0.2  : Check if sql is installed and choose proftpd package accordingly.
 
 Plugin file locations:
- /boot/config/plugins/proftpd-0.1-i486.plg                            # this file
+ /boot/config/plugins/proftpd-0.2-i486.plg                            # this file
  /tmp/prpftpd-cleanup                                                 # plugin cleanup script
 
  /boot/config/plugins/proftpd/README                                  # README file
 
- /boot/config/plugins/proftpd/proftpd-1.3.5rc1-0.1slrg.tgz            # selfbuilt proftpd package with many additional modules
+ /boot/config/plugins/proftpd/proftpd-1.3.5rc1-sql-0.2slrg.tgz        # selfbuilt proftpd package with many additional modules
+ /boot/config/plugins/proftpd/proftpd-1.3.5rc1-0.2slrg.tgz            # additional modules but no sql support
  /boot/config/plugins/proftpd/proftpd.conf                            # proftpd config file
 
  /boot/config/plugins/proftpd/proftpd.png                             # icon file
@@ -98,24 +100,26 @@ entries you'll have a powerful weapon to fulfill your needs. Have a look at:
 http://www.proftpd.org/docs/howto/Directory.html
 for further explanation.
 
-Bans, quotas, sftp, tls, sql users and more may be possible. The proftpd
+Bans, quotas, sftp, tls, sql users* and more may be possible. The proftpd
 included in my plugin was compiled with the following modules:
   mod_auth.c          mod_quotatab.c
   mod_auth_file.c     mod_quotatab_file.c
-  mod_auth_unix.c     mod_quotatab_sql.c
+  mod_auth_unix.c     mod_quotatab_sql.c*
   mod_ban.c           mod_readme.c
   mod_cap.c           mod_rewrite.c
   mod_core.c          mod_sftp.c
-  mod_ctrls.c         mod_sftp_sql.c
+  mod_ctrls.c         mod_sftp_sql.c*
   mod_ctrls_admin.c   mod_site.c
-  mod_delay.c         mod_sql.c
-  mod_facts.c         mod_sql_mysql.c
-  mod_ident.c         mod_sql_passwd.c
+  mod_delay.c         mod_sql.c*
+  mod_facts.c         mod_sql_mysql.c*
+  mod_ident.c         mod_sql_passwd.c*
   mod_log.c           mod_tls.c
   mod_ls.c            mod_xfer.c
 
+* only if sql package is installed
+
 In the future it may be possible to get php and sql based user and server
-management tools to work. Feel free to try an please report and share your
+management tools to work. Feel free to try and please report and share your
 findings.
 
 SlrG
@@ -123,9 +127,14 @@ SlrG
 </INLINE>
 </FILE>
 
-<FILE Name="/boot/config/plugins/proftpd/proftpd-1.3.5rc1-0.1slrg.tgz" Run="upgradepkg --install-new">
-<URL>--no-check-certificate https://github.com/SlrG/unRAIDplugins/raw/master/proftpd/proftpd-1.3.5rc1-0.1slrg.tgz</URL>
-<MD5>3f3b43615854bcea22b0697c557bbebb</MD5>
+<FILE Name="/boot/config/plugins/proftpd/proftpd-1.3.5rc1-0.2slrg.tgz">
+<URL>--no-check-certificate https://github.com/SlrG/unRAIDplugins/raw/master/proftpd/proftpd-1.3.5rc1-0.2slrg.tgz</URL>
+<MD5>c05a5855ceff62e35b33a00b0fbbd1ed</MD5>
+</FILE>
+
+<FILE Name="/boot/config/plugins/proftpd/proftpd-1.3.5rc1-sql-0.2slrg.tgz">
+<URL>--no-check-certificate https://github.com/SlrG/unRAIDplugins/raw/master/proftpd/proftpd-1.3.5rc1-sql-0.2slrg.tgz</URL>
+<MD5>5dcca38c854524f99bc566f35e5093e2</MD5>
 </FILE>
 
 <FILE Name="/boot/config/plugins/proftpd/proftpd.conf">
@@ -461,6 +470,11 @@ exit 0
 <![CDATA[
 plugin="proftpd"
 version="$(ls /boot/config/plugins/$plugin-*.plg | cut -d- -f2 | tr '\n' ' ')"
+echo "install correct proftpd version..."
+#install proftpd package with sql-modules
+[ -d "/usr/lib/mysql" ] && upgradepkg --install-new /boot/config/plugins/proftpd/proftpd-1.3.5rc1-sql-0.2slrg.tgz
+#install proftpd packaged without sql-modules
+[ ! -d "/usr/lib/mysql" ] && upgradepkg --install-new /boot/config/plugins/proftpd/proftpd-1.3.5rc1-0.2slrg.tgz
 echo "disable builtin FTP-Server..."
 /bin/sed -i -e "s/^ftp/##ftp/" /etc/inetd.conf
 echo "restart inetd to apply change..."
