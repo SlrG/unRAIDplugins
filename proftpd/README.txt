@@ -45,8 +45,11 @@ user4 will have access to dir_b and subdirectories but not to /mnt/cache/FTP or
       dir_a
  
 So, what if this is not enough for you? Well, for a more fine grained control
-you may edit the /etc/proftpd.conf file in shell directly. By adding directory
-entries you'll have a powerful weapon to fulfill your needs. Have a look at:
+you may edit the /etc/proftpd.conf file. If the simplefeatures webserver is
+installed and enabled, the plugin config page will provide the ability to edit
+the proftpd.conf file. If not, you'll have to edit it in shell directly.
+By adding directory entries you'll have a powerful weapon to fulfill your needs.
+Have a look at:
 http://www.proftpd.org/docs/howto/Directory.html
 for further explanation.
 
