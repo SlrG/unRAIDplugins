@@ -3,8 +3,8 @@
 Great thanks go to Limetech for giving us unRAID. To the ProFTPD project for
 their feature rich ftp server and the icon I used for this plugin.
 
-Further thanks go to Benni-Chan, Influencer, prostuff1 and speeding_ant for
-their great plugins. Studying their code was what made this plugin possible.
+Further thanks go to overbyrn, Benni-Chan, Influencer, prostuff1 and speeding_ant
+for their great plugins. Studying their code was what made this plugin possible.
                              **************
 
 HOWTO:
