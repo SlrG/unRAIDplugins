@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY plugin "ProFTPD">
 <!ENTITY author "SlrG">
-<!ENTITY plgver "0.2">
+<!ENTITY plgver "0.4">
 <!ENTITY pkg "/boot/packages">
 <!ENTITY pld "/boot/config/plugins/">
 <!ENTITY plg "/boot/config/plugins/proftpd">
@@ -387,7 +387,7 @@ SERVICE="disable"
       </tr>
       <?if (($proftpd_remoteplg != $proftpd_localplg) && ($proftpd_localplg != "Unknown") && ($proftpd_remoteplg != "Unknown")): ?>
         <tr>
-        <td width="30%">
+        <td style="padding-left:12px;"width="30%">
           <form name="proftpd_updateplg" method="POST" action="/update.htm" target="progressFrame">
             <input type="hidden" name="cmd" value="/etc/rc.d/rc.proftpd updateplg">
             <input type="submit" name="runCmd" value="Update Plugin">
@@ -400,7 +400,7 @@ SERVICE="disable"
 
       <?if (($proftpd_remoteapp != $proftpd_localapp) && ($proftpd_localapp != "Unknown") && ($proftpd_remoteapp != "Unknown")): ?>
         <tr>
-          <td width="30%">
+          <td style="padding-left:12px;"width="30%">
           <form name="proftpd_updateapp" method="POST" action="/update.htm" target="progressFrame">
             <input type="hidden" name="cmd" value="/etc/rc.d/rc.proftpd updateapp">
             <input type="submit" name="runCmd" value="Update ProFTPD">
