@@ -97,9 +97,9 @@ rmRecursiveNoWarn() {
 #One-time remove of legacy packages from previous proftpd plugin versions
 
 #Remove currently installed plugin files
-rmNoWarn /etc/rc.d/rc.proftpd                            # control script
+#rmNoWarn /etc/rc.d/rc.proftpd                            # control script
 rmNoWarn &pid;                                           # stale pid file
-rmRecursiveNoWarn /usr/local/emhttp/plugins/proftpd      # proftpd unraid webgui integration files
+#rmRecursiveNoWarn /usr/local/emhttp/plugins/proftpd      # proftpd unraid webgui integration files
 rmNoWarn /var/log/plugins/proftpd                        # record of previous plugin installation
 
 rm /tmp/plugin-cleanup
@@ -390,7 +390,7 @@ SERVICE="disable"
         <tr>
         <td style="padding-left:12px;"width="30%">
           <form name="proftpd_updateplg" method="POST" action="/update.htm" target="progressFrame">
-            <input type="hidden" name="cmd" value="<?=$updateplg?>">
+            <input type="hidden" name="cmd" value="/etc/rc.d/rc.proftpd updateplg">
             <input type="submit" name="runCmd" value="Update Plugin">
           </form>
         </td>
@@ -589,6 +589,35 @@ function proftpd_stop()
   fi
 }
 
+function proftpd_updateplg()
+{
+  if [ -f &pid; ]; then
+    DRUNNING="1"
+    proftpd_stop
+  fi
+  echo "Downloading plugin..."
+  wget -q -P /tmp --no-check-certificate &ghm;/proftpd.plg 2>/dev/null
+  if [ ! -f /tmp/proftpd.plg ]; then
+    echo "Download failed, update aborted!"
+    sleep 2
+  else
+    echo "...OK"
+    sleep 1
+    echo  "Upgrading plugin..."
+    sleep 1
+    mv -f &pld;/proftpd.plg &pld;/proftpd.plg.sav 2>/dev/null
+    mv -f /tmp/proftpd.plg &pld;/proftpd.plg 2>/dev/null
+    /usr/local/sbin/installplg &pld;/proftpd.plg 2>/dev/null
+    echo "...OK"
+    sleep 1
+  fi
+  if [ "$DRUNNING" == "1" ]; then
+    proftpd_start
+    sleep 1
+  fi
+
+}
+
 function proftpd_updateapp()
 {
   if [ -n "$pid" ]; then
@@ -740,6 +769,10 @@ case $1 in
     proftpd_stop
     ;;
 
+  updateplg)
+    proftpd_updateplg
+    ;;
+
   updateapp)
     proftpd_updateapp
     ;;
@@ -749,42 +782,12 @@ case $1 in
     ;;
 
   *)
-    echo "usage: $0 {install|start|buttonstart|stop|restart|enable|disable|updateapp|getver}"
+    echo "usage: $0 {install|start|buttonstart|stop|restart|enable|disable|updateplg|updateapp|getver}"
     exit 1
     ;;
 
 esac
 exit 0
-</INLINE>
-</FILE>
-
-<FILE Name="&plg;/updateplg">
-<INLINE>
-#!/bin/bash
-if [ -f &pid; ]; then
-  DRUNNING="1"
-  /etc/rc.d/rc.proftpd stop
-fi
-echo "Downloading plugin..."
-wget -q -P /tmp --no-check-certificate &ghm;/proftpd.plg 2>/dev/null
-if [ ! -f /tmp/proftpd.plg ]; then
-  echo "Download failed, update aborted!"
-  sleep 2
-else
-  echo "...OK"
-  sleep 1
-  echo  "Upgrading plugin..."
-  sleep 1
-  mv -f &pld;/proftpd.plg &pld;/proftpd.plg.sav 2>/dev/null
-  mv -f /tmp/proftpd.plg &pld;/proftpd.plg 2>/dev/null
-  /usr/local/sbin/installplg &pld;/proftpd.plg 2>/dev/null
-  echo "...OK"
-  sleep 1
-fi
-if [ "$DRUNNING" == "1" ]; then
-  /etc/rc.d/rc.proftpd start
-fi
-sleep 1
 </INLINE>
 </FILE>
 
