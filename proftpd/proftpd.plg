@@ -562,6 +562,7 @@ function proftpd_start ()
   fi
 
   if [ -r $FTPD_CONF ]; then
+    killall proftpd 2> /dev/null
     userjail
     echo "renewing userjail..."
     echo "starting proftpd..."
@@ -606,7 +607,6 @@ function proftpd_updateplg()
     echo "...OK"
     sleep 1
   fi
-  proftpd_start
 }
 
 function proftpd_updateapp()
@@ -643,10 +643,10 @@ function proftpd_plgver()
   case "$1" in
     'local')
       if [ -f &pld;/proftpd.plg ]; then
-	    VERSION=$(grep "&lt;\!ENTITY plgver" &pld;/proftpd.plg | cut -d\" -f2)
-	  else
-	    VERSION=Unknown
-	  fi
+        VERSION=$(grep "&lt;\!ENTITY plgver" &pld;/proftpd.plg | cut -d\" -f2)
+      else
+        VERSION=Unknown
+    fi
     ;;
     'remote')
       VERSION=$(wget --no-check-certificate &ghm;/proftpd.plg -q -O - | grep "&lt;\!ENTITY plgver" | cut -d\" -f2)
@@ -843,6 +843,7 @@ echo "Remove example config file..."
 rm /usr/local/etc/proftpd.conf
 echo "Symlink new config file..."
 /bin/ln -s &plg;/proftpd.conf /etc/proftpd.conf
+/etc/rc.d/rc.proftpd start
 echo ""
 echo "*************************************************************"
 echo "* &plugin; plugin has been installed."
