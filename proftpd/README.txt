@@ -3,13 +3,15 @@
 Great thanks go to Limetech for giving us unRAID. To the ProFTPD project for
 their feature rich ftp server and the icon I used for this plugin.
 
-Further thanks go to overbyrn, Benni-Chan, Influencer, prostuff1 and speeding_ant
-for their great plugins. Studying their code was what made this plugin possible.
+Further thanks go to overbyrn. This Plugin uses a lot of his code he did for
+his nzbget plugin. Please check it out, it is really great! Also to Benni-Chan,
+Influencer, prostuff1 and speeding_ant for their great plugins. Studying their
+code was what made this plugin possible.
                              **************
 
 HOWTO:
 I wanted to keep this plugin as simple as possible. So there is no fancy
-user- or servermanagement. The plugin provides you with the ability to 
+user- or servermanagement. The plugin provides you with the ability to
 define ftp-only users and assign them their own home directory, which they
 won't be able to leave. Of course it is possible to assign the same directory
 to more than one user.
