@@ -27,6 +27,7 @@ Version history:
 
 Plugin file locations:
  /boot/config/plugins/proftpd.plg                                     # this file
+ /tmp/plugin-prepare                                                  # plugin prepare script
  /tmp/prpftpd-cleanup                                                 # plugin cleanup script
 
  /boot/config/plugins/proftpd/README                                  # README file
@@ -553,24 +554,30 @@ function proftpd_start ()
 
   # enable service is disabled
   if [ $SERVICE != "enable" ]; then
-    echo "service disabled, aborting start"
+    echo "Service disabled, aborting start"
     return 0
   fi
 
   if [ -n "$pid" ]; then
-    echo "proftpd [PID $pid] already running"
+    echo "ProFTPD [PID $pid] already running"
     return 1
   fi
 
   if [ -r $FTPD_CONF ]; then
     killall proftpd 2> /dev/null
+    echo "Renewing userjail..."
+    sleep 1
     userjail
-    echo "renewing userjail..."
-    echo "starting proftpd..."
+    echo "...OK"
+    sleep 1
+    echo "Starting ProFTPD..."
     sudo -u root $FTPD_BIN -c $FTPD_CFG &amp;> /dev/null
+    echo "...OK"
+    sleep 1
     return 0
   else
-    echo "cannot start proftpd -- $FTPD_CONF missing"
+    echo "Cannot start ProFTPD -- $FTPD_CONF missing"
+    sleep 1
     return 1
   fi
 }
@@ -578,13 +585,17 @@ function proftpd_start ()
 function proftpd_stop()
 {
   if [ -n "$pid" ]; then
-    echo "stopping proftpd..."
+    echo "Stopping ProFTPD..."
+    sleep 1
     killall proftpd 2> /dev/null
     rm &pid; 2> /dev/null
     unset pid
+    echo "...OK"
+    sleep 1
   else
     killall proftpd 2> /dev/null
-    echo "proftpd not running"
+    echo "ProFTPD not running"
+    sleep 1
     return 1
   fi
 }
@@ -607,13 +618,12 @@ function proftpd_updateplg()
     sleep 1
     mv -f &pld;/proftpd.plg &pld;/proftpd.plg.sav 2>/dev/null
     mv -f /tmp/proftpd.plg &pld;/proftpd.plg 2>/dev/null
-    /usr/local/sbin/installplg &pld;/proftpd.plg 2>/dev/null
+    /usr/local/sbin/installplg &pld;/proftpd.plg >/dev/null
     echo "...OK"
     sleep 1
   fi
   if [ "$DRUNNING" == "1" ]; then
     proftpd_start
-    sleep 1
   fi
 
 }
@@ -740,13 +750,20 @@ case $1 in
 
   restart)
     if [ -n "$pid" ]; then
-      echo "renewing userjail..."
+      echo "Renewing userjail..."
+      sleep 1
       userjail
-      echo "restarting proftpd..."
+      echo "...OK"
+      sleep 1
+      echo "Restarting ProFTPD..."
+      sleep 1
       kill -HUP $pid
+      echo "...OK"
+      sleep 1
       exit 0
     else
-      echo "proftpd not running"
+      echo "ProFTPD not running"
+      sleep 1
       exit -1
     fi
     ;;
@@ -756,7 +773,8 @@ case $1 in
     if [ -f $CONFIG ]; then
       sed -i "s/"disable"/"enable/"" $CONFIG	
     fi
-    echo "proftpd unRAID service enabled"
+    echo "ProFTPD unRAID service enabled"
+    sleep 1
     proftpd_start
     ;;
 
@@ -765,7 +783,8 @@ case $1 in
     if [ -f $CONFIG ]; then
       sed -i "s/"enable"/"disable/"" $CONFIG	
     fi
-    echo "proftpd unRAID service disabled"
+    echo "ProFTPD unRAID service disabled"
+    sleep 1
     proftpd_stop
     ;;
 
