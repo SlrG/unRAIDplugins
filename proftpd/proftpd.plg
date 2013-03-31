@@ -52,6 +52,7 @@ Plugin file locations:
  /usr/local/emhttp/plugins/proftpd/event/unmounting_disks             # event handler will stop proftpd
                                                                       
  /etc/rc.d/rc.proftpd                                                 # proftpd startup script
+ /var/log/plugins/proftpd                                             # record of previous plugin installation
  /tmp/proftpd-install                                                 # plugin installation script
 -->
 
@@ -555,11 +556,13 @@ function proftpd_start ()
   # enable service is disabled
   if [ $SERVICE != "enable" ]; then
     echo "Service disabled, aborting start"
+    sleep 1
     return 0
   fi
 
   if [ -n "$pid" ]; then
     echo "ProFTPD [PID $pid] already running"
+    sleep 1
     return 1
   fi
 
@@ -571,6 +574,7 @@ function proftpd_start ()
     echo "...OK"
     sleep 1
     echo "Starting ProFTPD..."
+    sleep 1
     sudo -u root $FTPD_BIN -c $FTPD_CFG &amp;> /dev/null
     echo "...OK"
     sleep 1
@@ -633,7 +637,6 @@ function proftpd_updateapp()
   if [ -n "$pid" ]; then
     DRUNNING="1"
     proftpd_stop
-    sleep 1
   fi
   echo "Downloading Update..."
   APPVER=$(wget --no-check-certificate &ghm;/appver.txt -q -O -)
@@ -826,7 +829,7 @@ exit 0
 </INLINE>
 </FILE>
 
-<FILE Name="/var/log/plugins/&plugin;">
+<FILE Name="/var/log/plugins/proftpd">
 <INLINE>
 &plugin; v&plgver;
 </INLINE>
