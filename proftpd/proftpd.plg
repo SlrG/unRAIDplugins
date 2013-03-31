@@ -848,15 +848,17 @@ else
   echo "No SQL found. Installing proftpd without SQL support..."
   upgradepkg --install-new &plg;/$PKG
 fi
-  
-echo "Disable builtin FTP-Server..."
-/bin/sed -i -e "s/^ftp/##ftp/" /etc/inetd.conf
-echo "Restart inetd to apply change..."
-#/etc/rc.d/rc.inetd restart
-echo "Remove example config file..."
-rm /usr/local/etc/proftpd.conf
-echo "Symlink new config file..."
-/bin/ln -s &plg;/proftpd.conf /etc/proftpd.conf
+#detect if run on boot
+if [[ -n $(sed -n '/^ftp/p' /etc/inetd.conf) ]]; then
+  echo "Disable builtin FTP-Server..."
+  /bin/sed -i -e "s/^ftp/#ftp/" /etc/inetd.conf
+  echo "Restart inetd to apply change..."
+  #/etc/rc.d/rc.inetd restart
+  echo "Remove example config file..."
+  rm /usr/local/etc/proftpd.conf
+  echo "Symlink new config file..."
+  /bin/ln -s &plg;/proftpd.conf /etc/proftpd.conf
+fi
 echo ""
 echo "*************************************************************"
 echo "* &plugin; plugin has been installed."
