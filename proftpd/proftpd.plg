@@ -97,9 +97,9 @@ rmRecursiveNoWarn() {
 #One-time remove of legacy packages from previous proftpd plugin versions
 
 #Remove currently installed plugin files
-#rmNoWarn /etc/rc.d/rc.proftpd                            # control script
+rmNoWarn /etc/rc.d/rc.proftpd                            # control script
 rmNoWarn &pid;                                           # stale pid file
-#rmRecursiveNoWarn /usr/local/emhttp/plugins/proftpd      # proftpd unraid webgui integration files
+rmRecursiveNoWarn /usr/local/emhttp/plugins/proftpd      # proftpd unraid webgui integration files
 rmNoWarn /var/log/plugins/proftpd                        # record of previous plugin installation
 
 rm /tmp/plugin-cleanup
@@ -250,7 +250,7 @@ RootLogin               off
 Umask 022
 
 # "Jail" FTP-Users into their home directory. (chroot)
-# The root directory has to be set in description field
+# The root directory has to be set in the description field
 # when defining an user:
 # ftpuser /mnt/cache/FTP
 # See README for more information.
@@ -852,7 +852,7 @@ fi
 echo "Disable builtin FTP-Server..."
 /bin/sed -i -e "s/^ftp/##ftp/" /etc/inetd.conf
 echo "Restart inetd to apply change..."
-/etc/rc.d/rc.inetd restart
+#/etc/rc.d/rc.inetd restart
 echo "Remove example config file..."
 rm /usr/local/etc/proftpd.conf
 echo "Symlink new config file..."
