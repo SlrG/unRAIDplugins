@@ -577,8 +577,11 @@ function proftpd_stop()
 {
   if [ -n "$pid" ]; then
     echo "stopping proftpd..."
-    kill -TERM $pid
+    killall proftpd 2> /dev/null
+    rm &pid; 2> /dev/null
+    unset pid
   else
+    killall proftpd 2> /dev/null
     echo "proftpd not running"
     return 1
   fi
@@ -586,7 +589,7 @@ function proftpd_stop()
 
 function proftpd_updateplg()
 {
-  proftpd_stop;
+  proftpd_stop
   echo "Downloading plugin..."
   wget -q -P /tmp --no-check-certificate &ghm;/proftpd.plg 2>/dev/null
   if [ ! -f /tmp/proftpd.plg ]; then
@@ -603,12 +606,13 @@ function proftpd_updateplg()
     echo "...OK"
     sleep 1
   fi
-  proftpd_start;
+  proftpd_start
 }
 
 function proftpd_updateapp()
 {
-  proftpd_stop;
+  proftpd_stop
+  sleep 1
   echo "Downloading Update..."
   APPVER=$(wget --no-check-certificate &ghm;/appver.txt -q -O -)
   PKG=$APPVER.tgz
@@ -625,13 +629,13 @@ function proftpd_updateapp()
     sleep 1
     LCLPKG=$(basename /var/log/packages/proftpd*).tgz
     upgradepkg &plg;/$LCLPKG%/tmp/$PKG 2>/dev/null
-    rm -f &plg;/$LCLPKG 2>/dev/null
+    rm -f &plg;/*.tgz 2>/dev/null
     mv -f /tmp/$PKG &plg; 2>/dev/null
     mv -f /tmp/$PKGSQL &plg; 2>/dev/null
     echo "...OK"
     sleep 1
   fi
-  proftpd_start;
+  proftpd_start
 }
 
 function proftpd_plgver()
