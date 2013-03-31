@@ -875,7 +875,7 @@ if [[ -n $(sed -n '/^ftp/p' /etc/inetd.conf) ]]; then
   echo "Disable builtin FTP-Server..."
   /bin/sed -i -e "s/^ftp/#ftp/" /etc/inetd.conf
   echo "Restart inetd to apply change..."
-  #/etc/rc.d/rc.inetd restart
+  /etc/rc.d/rc.inetd restart
   echo "Remove example config file..."
   rm /usr/local/etc/proftpd.conf
   echo "Symlink new config file..."
