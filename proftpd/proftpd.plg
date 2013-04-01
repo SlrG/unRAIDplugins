@@ -510,7 +510,7 @@ function userjail()
   OLDIFS=$IFS
   while IFS=':' read user pass uid gid full home shell
   do
-    if [ "$full" == *ftpuser* ];
+    if [[ "$full" == *ftpuser* ]];
     then
       # extract homedir from description and put it into correct place
       nhome=${full:8}
