@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY plugin "ProFTPD">
 <!ENTITY author "SlrG">
-<!ENTITY plgver "0.4">
+<!ENTITY plgver "0.5">
 <!ENTITY pkg "/boot/packages">
 <!ENTITY pld "/boot/config/plugins/">
 <!ENTITY plg "/boot/config/plugins/proftpd">
@@ -24,6 +24,7 @@ Version history:
  2013-02-08 - version 0.2  : Check if sql is installed and choose proftpd package accordingly.
  2013-03-23 - version 0.3  : Provide config editor in iframe if simplefeatures webserver is available.
  2013-03-29 - version 0.4  : Update functionality for plugin (Thanks overbyrn!).
+ 2013-04-04 - version 0.5  : Added syntax checking and line numbering to config file editor.
 
 Plugin file locations:
  /boot/config/plugins/proftpd.plg                                     # this file
@@ -34,13 +35,13 @@ Plugin file locations:
 
  /boot/config/plugins/proftpd/device_status.png                       # icon file
  /boot/config/plugins/proftpd/new_config.png                          # icon file
- /boot/config/plugins/proftpd/proftpd-...slrg.tgz                     # selfbuilt proftpd package with many additional modules
- /boot/config/plugins/proftpd/proftpd-...slrg.tgz                     # additional modules but no sql support
+ /boot/config/plugins/proftpd/proftpd-x.x.x-sql.tgz                   # selfbuilt proftpd package with many additional modules
+ /boot/config/plugins/proftpd/proftpd-x.x.x.tgz                       # additional modules but no sql support
  /boot/config/plugins/proftpd/proftpd.conf                            # proftpd config file
  /boot/config/plugins/proftpd/proftpd.png                             # icon file
  /boot/config/plugins/proftpd/proftpd.cfg                             # plugin page config file
- /boot/config/plugins/proftpd/proftpdce.php                           # proftpd config editor
- $Webroot/proftpd/proftpdce.php                                       # proftpd config editor
+ /boot/config/plugins/proftpd/proftpdce.zip                           # proftpd config editor files
+ $Webroot/proftpd/                                                    # proftpd config editor files
 
  /usr/local/emhttp/plugins/images/device_status.png                   # plugin page icon file
  /usr/local/emhttp/plugins/images/new_config.png                      # plugin page icon file
@@ -97,6 +98,7 @@ rmRecursiveNoWarn() {
 }
 
 #One-time remove of legacy packages from previous proftpd plugin versions
+rmNoWarn &plg;/proftpdce.php                             # file is now part of proftpdce.zip
 
 #Remove currently installed plugin files
 rmNoWarn /etc/rc.d/rc.proftpd                            # control script
@@ -317,7 +319,7 @@ SERVICE="disable"
         <span class="red"><b>STOPPED</b></span>
       <?endif;?>
     </span>
-  </div>	
+  </div>
   <?if ($proftpd_running=="yes"):?>
     <div style="position:relative;float:left;width:50%;text-align:right; margin-bottom:24px">
       <form name="proftpd_start_stop" method="POST" action="/update.htm" target="progressFrame">
@@ -343,7 +345,7 @@ SERVICE="disable"
     <table>
       <tr style="font-weight:bold; color:#333333; background:#F0F0F0; text-shadow:0 1px 1px #FFFFFF;">
         <td  style="text-align:left;padding-left:12px;">Package/Plugin</td>
-        <td>Local Version</td>		
+        <td>Local Version</td>
         <td>Online Version</td>
       </tr>
       <tr style="font-weight:bold; background:#FFFFFF;">
@@ -379,7 +381,7 @@ SERVICE="disable"
             <span class="red-text">UNKNOWN</span>
           <?endif;?>
         </td>
-      </tr>      
+      </tr>
     </table>
   </div>
   <br />
@@ -450,9 +452,14 @@ SERVICE="disable"
 <?if ($websrv_cfg['service']=="1"):?>
   <div id="title">
     <span class="left">Edit proftpd.conf:&#32;<img src='/plugins/images/new_config.png'></span>
+    <span style="float: right; padding-right:15px;">
+      <a href="http://www.proftpd.org/docs/howto/" target="_blank">ProFTPD mini-HOWTOs</a>
+    </span>        
   </div>
-  <div style="padding-left:5px; padding-right:10px;">
-    <iframe src="http://<?=$var['NAME'];?>:<?echo $websrv_cfg['port']?>/proftpd/proftpdce.php" width="100%" height="315" name="ProFTPDConfig">
+  <div style="padding-left:5px; padding-right:15px;">
+    <iframe src="http://<?=$var['NAME'];?>:<?php 
+      echo $websrv_cfg['port']?>/proftpd/proftpdce.php" width="100%"
+      height="420" name="ProFTPDConfig">
       <p>IFrame not supported.</p>
     </iframe>
   </div>
@@ -461,32 +468,8 @@ SERVICE="disable"
 </INLINE>
 </FILE>
 
-<FILE Name="&plg;/proftpdce.php">
-<INLINE>
-<![CDATA[
-<?PHP
-  $fn = "/etc/proftpd.conf";
-  if (isset($_POST['content']))
-  {
-    $content = stripslashes($_POST['content']);
-    $content = preg_replace('/(\r\n|\r|\n)/s',"\n",$content);
-    $fp = fopen($fn,"w") or die ("Error opening file in write mode!");
-    fputs($fp,$content);
-    fclose($fp) or die ("Error closing file!");
-  }
-?>
-<html>
-  <head>
-  </head>
-  <body>
-    <form name="proftpd_config" method="POST" action="proftpdce.php">
-      <textarea style="width:100%" rows="15" cols="80" name="content"><?php readfile($fn); ?></textarea>
-      <input type="submit" value="Save">
-    </form>
-  </body>
-</html>
-]]>
-</INLINE>
+<FILE Name="&plg;/proftpdce.zip">
+<URL>-q --no-check-certificate &ghm;/proftpdce.zip</URL>
 </FILE>
 
 <FILE Name="/etc/rc.d/rc.proftpd"  Mode="0770">
@@ -498,7 +481,6 @@ FTPD_BIN=/usr/local/sbin/proftpd
 FTPD_CFG=/etc/proftpd.conf
 PIDFILE=&pid;
 WEBSRV=/boot/config/simpleFeatures/simpleFeatures.web.server.cfg
-PROFTPDCE=&plg;/proftpdce.php
 CONFIG=&plg;/proftpd.cfg
 # read our configuration
 source $CONFIG
@@ -538,11 +520,9 @@ function proftpdce_install()
       # check if config editor is already installed
       if [ ! -d $path/proftpd ]; then
         sudo -u nobody mkdir $path/proftpd/
-        if [ ! -f $path/proftpd/proftpdce.php ]; then
-          echo "installing proftpd config editor..."
-          sudo -u nobody cp $PROFTPDCE $path/proftpd/
-          /usr/local/sbin/newperms $path/proftpd >/dev/null
-        fi  
+        echo "installing proftpd config editor..."
+        sudo -u nobody unzip -o &plg;/proftpdce.zip -d $path/proftpd/
+        /usr/local/sbin/newperms $path/proftpd >/dev/null
       fi
     fi
   fi
@@ -839,6 +819,13 @@ exit 0
 <INLINE>
 #!/bin/bash
 echo
+echo "Looking for locally saved version of proftpdce..."
+if [[ ! -e &plg;/proftpdce.zip ]]; then
+  echo "Local version does not exist, downloading proftpdce.zip to /tmp"
+  wget -q -P /tmp --no-check-certificate &ghm;/proftpdce.zip 2>/dev/null
+else
+  echo "Found up to date local versions of proftpdce..."
+fi
 # Get (if necessary) and install proftpd packages. This ensures the plugin will 
 # always install the latest available build.
 APPVER=$(wget --no-check-certificate &ghm;/appver.txt -q -O -)
@@ -880,6 +867,8 @@ if [[ -n $(sed -n '/^ftp/p' /etc/inetd.conf) ]]; then
   rm /usr/local/etc/proftpd.conf
   echo "Symlink new config file..."
   /bin/ln -s &plg;/proftpd.conf /etc/proftpd.conf
+else
+  /etc/rc.d/rc.proftpd start
 fi
 echo ""
 echo "*************************************************************"
