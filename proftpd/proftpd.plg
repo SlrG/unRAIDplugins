@@ -3,14 +3,14 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY plugin "ProFTPD">
 <!ENTITY author "SlrG">
-<!ENTITY plgver "0.5">
+<!ENTITY plgver "0.5a">
 <!ENTITY pkg "/boot/packages">
 <!ENTITY pld "/boot/config/plugins/">
 <!ENTITY plg "/boot/config/plugins/proftpd">
 <!ENTITY pid "/var/run/proftpd.pid">
 <!ENTITY img "/usr/local/emhttp/plugins/images">
 <!ENTITY gui "/usr/local/emhttp/plugins/proftpd">
-<!ENTITY ghm "https://github.com/SlrG/unRAIDplugins/raw/master/proftpd/">
+<!ENTITY ghm "https://github.com/SlrG/unRAIDplugins/raw/master/proftpd">
 ]>
 
 <PLUGIN>
@@ -25,6 +25,7 @@ Version history:
  2013-03-23 - version 0.3  : Provide config editor in iframe if simplefeatures webserver is available.
  2013-03-29 - version 0.4  : Update functionality for plugin (Thanks overbyrn!).
  2013-04-04 - version 0.5  : Added syntax checking and line numbering to config file editor.
+ 2013-05-23 - version 0.5a : Fixed stupid bug that blocked the downloading of files from the github repo.
 
 Plugin file locations:
  /boot/config/plugins/proftpd.plg                                     # this file
