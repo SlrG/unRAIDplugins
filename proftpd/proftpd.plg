@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY plugin "ProFTPD">
 <!ENTITY author "SlrG">
-<!ENTITY plgver "0.5a">
+<!ENTITY plgver "0.5b">
 <!ENTITY pkg "/boot/packages">
 <!ENTITY pld "/boot/config/plugins/">
 <!ENTITY plg "/boot/config/plugins/proftpd">
@@ -26,6 +26,7 @@ Version history:
  2013-03-29 - version 0.4  : Update functionality for plugin (Thanks overbyrn!).
  2013-04-04 - version 0.5  : Added syntax checking and line numbering to config file editor.
  2013-05-23 - version 0.5a : Fixed stupid bug that blocked the downloading of files from the github repo.
+ 2013-05-23 - version 0.5b : Disable FTP Server icon of unRAIDs internal ftp server (Thanks saary).
 
 Plugin file locations:
  /boot/config/plugins/proftpd.plg                                     # this file
@@ -864,6 +865,8 @@ if [[ -n $(sed -n '/^ftp/p' /etc/inetd.conf) ]]; then
   /bin/sed -i -e "s/^ftp/#ftp/" /etc/inetd.conf
   echo "Restart inetd to apply change..."
   /etc/rc.d/rc.inetd restart
+  echo "Disable icon of builtin FTP-Server..."
+  mv /usr/local/emhttp/plugins/webGui/FTP.page /usr/local/emhttp/plugins/webGui/FTP.page.bak
   echo "Remove example config file..."
   rm /usr/local/etc/proftpd.conf
   echo "Symlink new config file..."
