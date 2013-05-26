@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY plugin "ProFTPD">
 <!ENTITY author "SlrG">
-<!ENTITY plgver "0.5b">
+<!ENTITY plgver "0.5c">
 <!ENTITY pkg "/boot/packages">
 <!ENTITY pld "/boot/config/plugins/">
 <!ENTITY plg "/boot/config/plugins/proftpd">
@@ -25,8 +25,9 @@ Version history:
  2013-03-23 - version 0.3  : Provide config editor in iframe if simplefeatures webserver is available.
  2013-03-29 - version 0.4  : Update functionality for plugin (Thanks overbyrn!).
  2013-04-04 - version 0.5  : Added syntax checking and line numbering to config file editor.
- 2013-05-23 - version 0.5a : Fixed stupid bug that blocked the downloading of files from the github repo.
- 2013-05-23 - version 0.5b : Disable FTP Server icon of unRAIDs internal ftp server (Thanks saary).
+ 2013-05-23 - version 0.5a : Fixed stupid bug that blocked the downloading of files from the github repo. (Thanks saary!)
+ 2013-05-23 - version 0.5b : Disable FTP Server icon of unRAIDs internal ftp server. (Thanks saary!)
+ 2013-05-23 - version 0.5c : Change of wordings.
 
 Plugin file locations:
  /boot/config/plugins/proftpd.plg                                     # this file
@@ -600,7 +601,7 @@ function proftpd_updateplg()
   else
     echo "...OK"
     sleep 1
-    echo  "Upgrading plugin..."
+    echo  "Updating plugin..."
     sleep 1
     mv -f &pld;/proftpd.plg &pld;/proftpd.plg.sav 2>/dev/null
     mv -f /tmp/proftpd.plg &pld;/proftpd.plg 2>/dev/null
@@ -632,7 +633,7 @@ function proftpd_updateapp()
   else
     echo "...OK"
     sleep 1
-    echo "Upgrading Application..."
+    echo "Updating Application..."
     sleep 1
     LCLPKG=$(basename /var/log/packages/proftpd*).tgz
     upgradepkg &plg;/$LCLPKG%/tmp/$PKG 2>/dev/null
