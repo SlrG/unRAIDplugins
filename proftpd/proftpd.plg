@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY plugin "ProFTPD">
 <!ENTITY author "SlrG">
-<!ENTITY plgver "0.5d">
+<!ENTITY plgver "0.5e">
 <!ENTITY pkg "/boot/packages">
 <!ENTITY pld "/boot/config/plugins/">
 <!ENTITY plg "/boot/config/plugins/proftpd">
