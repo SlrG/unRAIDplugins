@@ -1,0 +1,6 @@
+Author="Andrew Hamer-Adams"
+Version="1.0.3"
+Title="Sleep"
+Menu="Main"
+Cond="$display['button']"
+Type="php"

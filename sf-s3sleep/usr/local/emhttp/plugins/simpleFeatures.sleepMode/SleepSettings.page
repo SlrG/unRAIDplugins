@@ -1,0 +1,6 @@
+Author="Bergware"
+Version="1.0.1"
+Title="Sleep Mode"
+Menu="SimpleFeaturesSettings"
+Icon="images/sleepsettings.png"
+Type="php"

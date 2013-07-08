@@ -1,0 +1,225 @@
+<?xml version='1.0' standalone='yes'?>
+
+<!DOCTYPE PLUGIN [
+<!ENTITY plugin "s3.sleep">
+<!ENTITY version "1.0.10">
+<!ENTITY pkg "/boot/packages">
+<!ENTITY plg "/boot/plugins/simpleFeatures">
+<!ENTITY rom "/boot/config/simpleFeatures">
+<!ENTITY ram "/var/local/emhttp">
+<!ENTITY gui "/usr/local/emhttp/plugins">
+<!ENTITY src "http://unraid-simplefeatures.googlecode.com/files">
+]>
+
+<PLUGIN>
+<!--
+Copyright 2012, Bergware International & Andrew Hamer Adams
+SimpleFeatures S3 Sleep - Manual and automatic sleep mode
+
+Version history:
+ 2013-01-06 - version 2.2.1 : Added exclude outside parameters
+ 2013-01-06 - version 2.2   : SimpleFeatures version 1.0.10 update
+ 2012-11-27 - version 2.1   : SimpleFeatures version 1.0.9 update
+ 2012-11-01 - version 2.0   : SimpleFeatures version 1.0.8 rewrite
+ 2012-10-01 - version 1.4   : SimpleFeatures version 1.0.6 update
+ 2012-09-09 - version 1.3   : SimpleFeatures version 1.0.5 update
+ 2012-06-17 - version 1.2   : Updated "grace" function
+ 2012-06-06 - version 1.1   : Added file location descriptions
+ 2012-06-02 - version 1.0   : First release
+
+Plugin file locations:
+ /boot/plugins/simpleFeatures.s3.sleep-0.0.0-noarch-1.plg                       # this file
+
+ /boot/plugins/simpleFeatures/simpleFeatures.s3.sleep-0.0.0-i486-1.txz          # source code
+ /boot/plugins/simpleFeatures/simpleFeatures.s3.sleep.png                       # icon file
+
+ /boot/config/simpleFeatures/simpleFeatures.s3.sleep.cfg                        # non-volatile storage
+ /var/local/emhttp/simpleFeatures.s3.sleep.ini                                  # configuration settings
+
+ /usr/local/emhttp/plugins/simpleFeatures.sleepMode/event/disks_mounted         # emhttp event script
+ /usr/local/emhttp/plugins/simpleFeatures.sleepMode/event/unmounting_disks      # emhttp event script
+
+ /etc/rc.d/rc.s3sleep                                                           # control script
+ /etc/s3_sleep.conf                                                             # script settings
+
+ /tmp/plugin-prepare                                                            # preparation script
+ /tmp/plugin-cleanup                                                            # deletion script
+ /tmp/plugin-install                                                            # installation script
+-->
+
+<FILE Name="/tmp/plugin-prepare" Run="/bin/bash">
+<INLINE>
+# Wait until network is ready
+timer=30
+while [ $timer -gt 0 ]; do
+  gateway=$(route -n | awk '/^0.0.0.0/ {print $2}')
+  if [ -n "$gateway" ] &amp;&amp; [ $(ping -q -n -c 1 $gateway | awk -F, '/received/ {print $2}' | awk '{print $1}') -eq 1 ]; then
+    break
+  fi
+  timer=$((timer-1))
+  sleep 1
+done
+if [ $timer -eq 0 ]; then
+  echo "No network communication !!!"
+fi
+# Remove this script
+rm -f /tmp/plugin-prepare
+</INLINE>
+</FILE>
+
+<FILE Name="&plg;/simpleFeatures.&plugin;-&version;-i486-1.txz" Run="upgradepkg --install-new">
+<URL>&src;/simpleFeatures.&plugin;-&version;-i486-1.txz</URL>
+<MD5>adc993a0fb70793d934f2f005ad7c996</MD5>
+</FILE>
+
+<FILE Name="&plg;/simpleFeatures.&plugin;.png">
+<URL>&src;/simpleFeatures.&plugin;.png</URL>
+</FILE>
+
+<FILE Name="&gui;/simpleFeatures.sleepMode/images/sleepsettings.png">
+<LOCAL>&plg;/simpleFeatures.&plugin;.png</LOCAL>
+</FILE>
+
+<FILE Name="/tmp/plugin-cleanup" Run="/bin/bash">
+<INLINE>
+# Plugin cleanup
+rm -f $(ls &plg;/simpleFeatures.&plugin;*.t[xg]z | grep -v '&version;')
+rm -f /var/log/plugins/simpleFeatures.&plugin;
+rm -f /etc/rc.d/rc.s3sleep
+rm -f &gui;/simpleFeatures.sleepMode/event/disks_mounted
+rm -f &gui;/simpleFeatures.sleepMode/event/unmounting_disks
+# Remove this script
+rm -f /tmp/plugin-cleanup
+</INLINE>
+</FILE>
+
+<FILE Name="/etc/rc.d/rc.s3sleep" Mode="0770">
+<INLINE>
+#!/bin/sh
+program="s3_sleep"
+execute="/usr/local/sbin/$program"
+options="/etc/s3_sleep.conf"
+pid=$(pidof -s -x $execute)
+
+case "$1" in
+'start')
+  if [ -z "$pid" ]; then
+    $execute $(cat $options) 1>/dev/null 2>&amp;1
+    echo "$program started"
+  else
+    echo "$program already running!"
+  fi
+;;
+'stop')
+  if [ -n "$pid" ]; then
+    $execute -q 1>/dev/null 2>&amp;1
+    timer=5
+    until [ -z "$(pidof -s -x $execute)" ] || [ $timer -eq 0 ]; do
+      timer=$((timer-1))
+      sleep 1
+    done
+    echo "$program stopped"
+  else
+    echo "$program not running!"
+  fi
+;;
+*)
+  echo "Usage: $(basename $0) start|stop"
+esac
+</INLINE>
+</FILE>
+
+<FILE Name="&gui;/simpleFeatures.sleepMode/event/disks_mounted" Mode="0770">
+<INLINE>
+#!/bin/bash
+ini="&ram;/simpleFeatures.&plugin;.ini"
+conf="/etc/s3_sleep.conf"
+enable=$(grep "^service=" $ini | cut -d'"' -f2)
+if [ "$enable" == "1" -o "$enable" == "2" ]; then
+  if [ ! -f $conf ]; then
+    grep "^options=" $ini | cut -d'"' -f2 | tr -d "\n" > $conf
+  fi
+  /etc/rc.d/rc.s3sleep start >/dev/null
+fi
+</INLINE>
+</FILE>
+
+<FILE Name="&gui;/simpleFeatures.sleepMode/event/unmounting_disks" Mode="0770">
+<INLINE>
+#!/bin/bash
+ini="&ram;/simpleFeatures.&plugin;.ini"
+enable=$(grep "^service=" $ini | cut -d'"' -f2)
+if [ "$enable" == "1" -o "$enable" == "2" ]; then
+  /etc/rc.d/rc.s3sleep stop >/dev/null
+fi
+</INLINE>
+</FILE>
+
+<FILE Name="/tmp/plugin-install" Run="/bin/bash">
+<INLINE>
+cfg="&rom;/simpleFeatures.&plugin;.cfg"
+ini="&ram;/simpleFeatures.&plugin;.ini"
+echo "executing !"
+
+#string decoder
+urldecode(){
+  echo -e "$(sed 's/+/ /g;s/%0D//g;s/%/\\x/g')"
+}
+
+setup(){
+  if [ -z "$1" ]; then
+    grep -s -v "^#" $cfg >> $ini
+  else
+    echo "[$1]" >> $ini
+    grep -s "^$1\." $cfg | sed "s:^$1\.::" >> $ini
+  fi
+  shift
+  for setting in "$@"
+  do
+    grep -q "^$(echo $setting | cut -d'=' -f1)=" $ini
+    if [ $? -eq 1 ]; then
+      echo $setting >> $ini
+    fi
+  done
+}
+
+# Create plugin settings
+rm -f $ini
+setup '' 'service="0"' 'checkHDD="-a"' 'timeout="30"' 'interval="3"' 'port="eth0"' 'checkTCP=""' 'idle="0"' 'login=""' 'pingIP=""' 'stopDay=""' 'stopHour=""' 'dhcpRenew=""' 'forceGb=""' 'setWol=""' 'preRun=""' 'postRun=""' 'debug="0"'
+
+# Create preRun and postRun files (if existing)
+bin="/usr/local/bin"
+bash="#!/bin/bash\n"
+if [ -f $cfg ]; then
+  preRun=$(grep "^preRun=" $cfg | cut -d'"' -f2)
+  if [ -n "$preRun" ]; then
+    echo "${bash}${preRun}" | urldecode > $bin/preRun
+    chmod u+x $bin/preRun
+  fi
+  postRun=$(grep "^postRun=" $cfg | cut -d'"' -f2)
+  if [ -n "$postRun" ]; then
+    echo "${bash}${postRun}" | urldecode > $bin/postRun
+    chmod u+x $bin/postRun
+  fi
+fi
+
+echo ""
+echo "-----------------------------------------------------------"
+echo "SimpleFeatures '&plugin;' has been installed."
+echo "This plugin requires SimpleFeatures core webGUI to operate"
+echo "Copyright 2012, Bergware International &amp; Andrew Hamer-Adams"
+echo "Version: &version;"
+echo "-----------------------------------------------------------"
+echo ""
+
+# Remove this install file - we are done!
+rm -f /tmp/plugin-install
+</INLINE>
+</FILE>
+
+<FILE Name="/var/log/plugins/simpleFeatures.&plugin;">
+<INLINE>
+SimpleFeatures.&plugin; v&version;
+</INLINE>
+</FILE>
+</PLUGIN>
