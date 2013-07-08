@@ -27,7 +27,7 @@
 #                 Based on suggestions made by 'Bagpuss'
 #
 # Version 2.1.1   Added option to exclude drives outside of array from monitoring.
-#                 Added -A -I option to include only listed drives.
+#                 Added -A -I option to exclude only listed drives.
 #                 Added -A -E option to exclude all, but listed drives.
 #
 # Bergware International
