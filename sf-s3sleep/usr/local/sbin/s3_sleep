@@ -26,11 +26,15 @@
 #                 Added -D option to allow debugging (troubleshooting)
 #                 Based on suggestions made by 'Bagpuss'
 #
+#
+# Bergware International
+####################################################################################
+#  !!! Unauthorized mod by SlrG !!! No support by the original developers !!!
+#                        !!! Use at your own risk !!!
+#
 # Version 2.1.1   Added option to exclude drives outside of array from monitoring.
 #                 Added -A -I option to exclude only listed drives.
 #                 Added -A -E option to exclude all, but listed drives.
-#
-# Bergware International
 ####################################################################################
 version=2.1.1
 program_name=`basename $0`
@@ -228,10 +232,10 @@ if [ "$exclude" = "yes" ]; then
 else
   devicelist=$(ls /dev/[hs]d? | egrep -v "($flash|$cache)")
 fi
-#devicelist=($(printf '%s\n' "${devicelist[@]}"|sort))
 devicelist=( $(echo "${devicelist[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ') )
 
-echo "==============================================
+echo "----------------------------------------------
+---    !!! unauthorized mod by SlrG !!!    ---
 command-args=$*
 action mode=$action
 check array=$checkHDD

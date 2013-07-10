@@ -139,7 +139,7 @@ if [ "$enable" == "1" -o "$enable" == "2" ]; then
   if [ ! -f $conf ]; then
     grep "^options=" $ini | cut -d'"' -f2 | tr -d "\n" > $conf
   fi
-  /etc/rc.d/rc.s3sleep start >/dev/null
+  (sleep 120 &amp;&amp; /etc/rc.d/rc.s3sleep start >/dev/null) &amp;
 fi
 </INLINE>
 </FILE>
