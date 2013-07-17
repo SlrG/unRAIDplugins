@@ -3,13 +3,14 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY plugin "ProFTPD">
 <!ENTITY author "SlrG">
-<!ENTITY plgver "0.5f">
+<!ENTITY plgver "0.5g">
 <!ENTITY pkg "/boot/packages">
 <!ENTITY pld "/boot/config/plugins/">
 <!ENTITY plg "/boot/config/plugins/proftpd">
 <!ENTITY pid "/var/run/proftpd.pid">
 <!ENTITY img "/usr/local/emhttp/plugins/images">
 <!ENTITY gui "/usr/local/emhttp/plugins/proftpd">
+<!ENTITY wsc "/boot/config/simpleFeatures/simpleFeatures.web.server.cfg">
 <!ENTITY ghm "https://github.com/SlrG/unRAIDplugins/raw/master/proftpd">
 <!ENTITY dsv "http://www.sdevel.de/proftpd">
 ]>
@@ -32,6 +33,7 @@ Version history:
  2013-05-27 - version 0.5d : Fixed error message when no SimpleFeatures webserver is installed.
  2013-05-28 - version 0.5e : Fixed openssl dependency.
  2013-05-28 - version 0.5f : Move binary files from github to personal webspace and change version check.
+ 2013-07-17 - version 0.5g : Fixed problem that slashes were removed from proftpd.conf on save and removed unnecessary sudo commands. (Thanks Necrotic!)
 
 Plugin file locations:
  /boot/config/plugins/proftpd.plg                                     # this file
@@ -54,13 +56,13 @@ Plugin file locations:
 
  /usr/local/emhttp/plugins/images/device_status.png                   # plugin page icon file
  /usr/local/emhttp/plugins/images/new_config.png                      # plugin page icon file
- 
+
  /usr/local/emhttp/plugins/proftpd/proftpd.png                        # plugin page icon file
  /usr/local/emhttp/plugins/proftpd/proftpd.page                       # plugin page file
  /usr/local/emhttp/plugins/proftpd/proftpd.php                        # plugin page file
  /usr/local/emhttp/plugins/proftpd/event/disks_mounted                # event handler will start proftpd
  /usr/local/emhttp/plugins/proftpd/event/unmounting_disks             # event handler will stop proftpd
-                                                                      
+
  /etc/rc.d/rc.proftpd                                                 # proftpd startup script
  /var/log/plugins/proftpd                                             # record of previous plugin installation
  /tmp/proftpd-install                                                 # plugin installation script
@@ -105,6 +107,12 @@ rmNoWarn() {
 rmRecursiveNoWarn() {
   test -e $1 &amp;&amp; rm -r $1 2>/dev/null
 }
+
+#Selfremoval commands to force the redownload of updated files
+echo
+echo "Executing selfremoval commands if present..."
+echo " removing proftpdce.zip" &amp; rmNoWarn &plg;/proftpdce.zip &amp; sed -i -e '/removemark0001/d' &pld;/proftpd.plg                      # removemark0001
+(source &wsc;; echo " removing proftpdce from $path/proftpd"; rmRecursiveNoWarn $path/proftpd) &amp; sed -i -e '/removemark0002/d' &pld;/proftpd.plg # removemark0002
 
 #One-time remove of legacy packages from previous proftpd plugin versions
 rmNoWarn &plg;/proftpdce.php                             # file is now part of proftpdce.zip
@@ -485,10 +493,6 @@ SERVICE="disable"
 </INLINE>
 </FILE>
 
-<FILE Name="&plg;/proftpdce.zip">
-<URL>-q --no-check-certificate &dsv;/proftpdce.zip</URL>
-</FILE>
-
 <FILE Name="/etc/rc.d/rc.proftpd"  Mode="0770">
 <INLINE>
 #!/bin/bash
@@ -497,7 +501,6 @@ SERVICE="disable"
 FTPD_BIN=/usr/local/sbin/proftpd
 FTPD_CFG=/etc/proftpd.conf
 PIDFILE=&pid;
-WEBSRV=/boot/config/simpleFeatures/simpleFeatures.web.server.cfg
 CONFIG=&plg;/proftpd.cfg
 # read our configuration
 source $CONFIG
@@ -531,14 +534,14 @@ function userjail()
 function proftpdce_install()
 {
   # check if webserver is installed and enabled 
-  if [ -e "$WEBSRV" ]; then
-    source $WEBSRV
+  if [ -e "&wsc;" ]; then
+    source &wsc;
     if [ $service == "1" ]; then
       # check if config editor is already installed
       if [ ! -d $path/proftpd ]; then
-        sudo -u nobody mkdir $path/proftpd/
+        mkdir $path/proftpd/
         echo "installing proftpd config editor..."
-        sudo -u nobody unzip -o &plg;/proftpdce.zip -d $path/proftpd/
+        unzip -o &plg;/proftpdce.zip -d $path/proftpd/
         /usr/local/sbin/newperms $path/proftpd >/dev/null
       fi
     fi
@@ -842,6 +845,7 @@ echo "Looking for locally saved version of proftpdce..."
 if [[ ! -e &plg;/proftpdce.zip ]]; then
   echo "Local version does not exist, downloading proftpdce.zip to /tmp"
   wget -q -P /tmp --no-check-certificate &dsv;/proftpdce.zip 2>/dev/null
+  mv -f /tmp/proftpdce.zip &plg;
 else
   echo "Found up to date local versions of proftpdce..."
 fi
