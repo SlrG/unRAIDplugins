@@ -37,13 +37,13 @@ foreach ($_GET as $key => $value) {
     file_put_contents($preRun, "#!/bin/bash\n".str_replace("\r","",$value));
     exec("chmod u+x $preRun");
     $_GET[$key] = urlencode($value);
-    $options .= " -b $preRun";
+    $options .= "-b $preRun ";
     break;
   case 'postRun':
     file_put_contents($postRun, "#!/bin/bash\n".str_replace("\r","",$value));
     exec("chmod u+x $postRun");
     $_GET[$key] = urlencode($value);
-    $options .= " -p $postRun";
+    $options .= "-p $postRun ";
     break;
   case 'stopDay':
   case 'stopHour':
