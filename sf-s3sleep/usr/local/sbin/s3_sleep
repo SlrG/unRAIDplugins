@@ -194,7 +194,6 @@ if [ "$exclude" = "yes" ]; then
     sleep 30
   done
   if [ -f /var/local/emhttp/disks.ini ]; then
-    cp /var/local/emhttp/disks.ini /boot/diniout.txt
     exec </var/local/emhttp/disks.ini
     while read ini
     do
