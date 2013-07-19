@@ -188,7 +188,13 @@ fi
 # Generate device list for exclude mode without lists
 devicelist=()
 if [ "$exclude" = "yes" ]; then
+  # wait for disks.ini to be created
+  while [ ! -f /var/local/emhttp/disks.ini ]; do
+    log "Waiting for disks.ini to be created..."
+    sleep 30
+  done
   if [ -f /var/local/emhttp/disks.ini ]; then
+    cp /var/local/emhttp/disks.ini /boot/diniout.txt
     exec </var/local/emhttp/disks.ini
     while read ini
     do

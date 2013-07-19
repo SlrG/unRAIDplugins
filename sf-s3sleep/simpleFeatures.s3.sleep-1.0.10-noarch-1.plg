@@ -104,7 +104,7 @@ pid=$(pidof -s -x $execute)
 case "$1" in
 'start')
   if [ -z "$pid" ]; then
-    $execute $(cat $options) 1>/dev/null 2>&amp;1
+    $execute $(cat $options) 1>/dev/null 2>&amp;1 &amp;
     echo "$program started"
   else
     echo "$program already running!"
@@ -139,7 +139,7 @@ if [ "$enable" == "1" -o "$enable" == "2" ]; then
   if [ ! -f $conf ]; then
     grep "^options=" $ini | cut -d'"' -f2 | tr -d "\n" > $conf
   fi
-  (sleep 120 &amp;&amp; /etc/rc.d/rc.s3sleep start >/dev/null) &amp;
+  /etc/rc.d/rc.s3sleep start >/dev/null
 fi
 </INLINE>
 </FILE>
