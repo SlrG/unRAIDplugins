@@ -180,35 +180,26 @@ fi
 flash=/dev/$(ls -l /dev/disk/by-label | awk -F/ '/UNRAID/ {print $3}' | cut -c1-3)
 
 # Get device ID of cache (if present)
+cdrive=$(awk '/\/mnt\/cache/ {print $1}' /proc/mounts | cut -c1-8)
 if [ -z "$cache" ]; then
-  cache=$(awk '/\/mnt\/cache/ {print $1}' /proc/mounts | cut -c1-8)
+  cache="$cdrive"
   [ -z "$cache" ] && cache="-"
 fi
 
 # Generate device list for exclude mode without lists
 devicelist=()
 if [ "$exclude" = "yes" ]; then
-  # wait for disks.ini to be created
-  while [ ! -f /var/local/emhttp/disks.ini ]; do
-    log "Waiting for disks.ini to be created..."
-    sleep 30
-  done
-  if [ -f /var/local/emhttp/disks.ini ]; then
-    exec </var/local/emhttp/disks.ini
-    while read ini
-    do
-      case $ini in
-        deviceSb*)
-          continue
-          ;;
-        device*)
-          device=`echo "$ini" | sed -e "s/\([^=]*\)=\([^=]*\)/\2/" -e "s/\\r//" -e "s/\"//g"`
-          if [ ! "/dev/$device" = "$flash" ] && [ ! "/dev/$device" = "$cache" ]; then
-            devicelist+=("/dev/$device")
-          fi
-      esac
-    done
-  fi
+  while read ini
+  do
+    case $ini in
+      rdevName.*)
+        device=${ini#*=}
+        if [ ! "/dev/$device" == "/dev/" ]; then
+          devicelist+=("/dev/$device ")
+        fi
+    esac
+  done < /proc/mdcmd
+  if [ ! "$cdrive" == "" ]; then devicelist+=("$cdrive"); fi
 
   # Generate device list for exclude outside mode with include list
   if [ -n "$excludeI" ]; then
