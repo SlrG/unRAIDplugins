@@ -222,9 +222,9 @@ if [ "$exclude" = "yes" ]; then
       alldevicelist=${alldevicelist[@]//$item/}
     done
     devicelist=( "${devicelist[@]}" "${alldevicelist[@]}" )
-    devicelist=( ${devicelist[@]//$flash/} )
-    devicelist=( ${devicelist[@]//$cache/} )
   fi
+  devicelist=( ${devicelist[@]//$flash/} )
+  devicelist=( ${devicelist[@]//$cache/} )
 else
   devicelist=$(ls /dev/[hs]d? | egrep -v "($flash|$cache)")
 fi
