@@ -50,7 +50,7 @@ function countSelected(id){
 function prepareSleep(form) {
   if (countSelected('excludeList') == 0) {
     document.getElementsByName('exclude')[0].scrollIntoView();
-    alert ("Plese select at least one drive exclude/include!");
+    alert ("Plese select at least one drive to exclude/include!");
     return false;
   }
   var days = '';
