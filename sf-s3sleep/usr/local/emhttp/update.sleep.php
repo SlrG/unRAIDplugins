@@ -7,7 +7,13 @@
  */
 ?>
 <?
+if (isset ($_GET['excludeList'])) {
+  $excludeList = $_GET['excludeList'];
+  $excludeString = implode (",",$excludeList);
+  exec ("echo \"$excludeString\" >> /boot/0excludeList");
+}
 foreach ($_GET as $key => $value) {
+  if ("$key" == "excludeList") $value = $excludeString;
   if (!strlen($value)) continue;
   switch ($key) {
   case '#config':
@@ -32,6 +38,7 @@ foreach ($_GET as $key => $value) {
     break;
   case 'excludeList':
     $options .= "$value ";
+    $_GET[$key] = $value;
     break;
   case 'preRun':
     file_put_contents($preRun, "#!/bin/bash\n".str_replace("\r","",$value));
@@ -48,9 +55,6 @@ foreach ($_GET as $key => $value) {
   case 'stopDay':
   case 'stopHour':
   case 'pingIP':
-    $list = explode(',', $value);
-    foreach ($list as $insert) $options .= "-{$prefix[$key]} $insert ";
-    break;
   default:
     if (substr($key,0,1)!='#') $options .= (isset($prefix[$key]) ? "-{$prefix[$key]} " : "")."$value ";
     break;

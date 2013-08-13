@@ -21,6 +21,9 @@ $folder = "/usr/local/bin";
 
 unset($sPorts);
 exec("ifconfig -s | awk '$1~/[0-9]$/ {print $1}'", &$sPorts);
+unset($sExcludeList);
+exec("$fName -ED", &$sExcludeList);
+
 $days = array('Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday');
 ?>
 <script>
@@ -30,8 +33,26 @@ $(document).ready(function() {
   $.ajax({url:'<?=$sf?>/include/ProcessStatus.php', data:'name=<?=$sName?>', success:function(status) {$("[name=<?=$page['Name']?>]").append(status);}});
   presetSleep(document.sleep_settings);
 });
+function resetSelected() {
+  names = document.getElementsByName (' selected');
+  for (var x=0; x < names.length; x++)
+    names[x].selected=true;
+}
+function countSelected(id){
+  var options = document.getElementById(id).options;
+  count = 0;
 
+  for (var i=0; i < options.length; i++) {
+    if (options[i].selected) count++;
+  }
+  return count;
+}
 function prepareSleep(form) {
+  if (countSelected('excludeList') == 0) {
+    document.getElementsByName('exclude')[0].scrollIntoView();
+    alert ("Plese select at least one drive exclude/include!");
+    return false;
+  }
   var days = '';
   for (var i=0,item; item=form.stopDay.options[i]; i++) {
     if (item.selected) {
@@ -56,7 +77,6 @@ function prepareSleep(form) {
   item.selected = true;
   form.pingIP.value = form.pingIP.value.replace(/,/g,' ').replace(/\s+/g,',');
 }
-
 function presetSleep(form) {
   var disabled = form.service.value==0;
   var onOff = disabled ? 'disable' : 'enable';
@@ -67,13 +87,16 @@ function presetSleep(form) {
   form.service.disabled = false;
   $("#s1").dropdownchecklist(onOff);
   $("#s2").dropdownchecklist(onOff);
-  if (!disabled) {changeExclude(form); changeIdle(form); changePort(form);}
+  if (!disabled) {
+    changeExclude(form); changeIdle(form); changePort(form);
+  }
   logNote(form);
+  return true;
 }
 function resetSleep(form) {
   form.checkHDD.selectedIndex = 1;
   form.exclude.selectedIndex = 0;
-  form.excludeList.value = '';
+  resetSelected();
   form.timeout.value = 30;
   form.checkTCP.selectedIndex = 0;
   form.idle.value = 0;
@@ -94,7 +117,11 @@ function resetSleep(form) {
 }
 function changeExclude(form) {
   var disabled = form.exclude.value.substr(3,5)=='';
-  form.excludeList.disabled = disabled;
+  if (disabled)
+    document.getElementById('excludeList').selectedIndex = -1;
+  else
+    resetSelected();
+  document.getElementById('excludeList').disabled = disabled;
 }
 function changeIdle(form) {
   var disabled = form.checkTCP.value=='';
@@ -110,7 +137,7 @@ function logNote(form) {
   if (note==1 || note==3) {$("#note").show();} else {$("#note").hide();}
 }
 </script>
-<form name="sleep_settings" method="POST" action="/update.php" target="progressFrame" onsubmit="prepareSleep(this)">
+<form name="sleep_settings" method="POST" action="/update.php" target="progressFrame" onsubmit="return prepareSleep(this)">
 <input type="hidden" name="#plugin"  value="<?=$plugin?>">
 <input type="hidden" name="#include" value="update.sleep.php">
 <input type="hidden" name="#config"  value="<?=$config?>">
@@ -152,13 +179,25 @@ function logNote(form) {
   <tr><td>Exclude disks outside array:</td>
   <td><select name="exclude" size="1" onChange="changeExclude(this.form)">
 <?=mk_option($ini['exclude'], "", "No")?>
-<?=mk_option($ini['exclude'], "-A -E", "Only listed")?>
-<?=mk_option($ini['exclude'], "-A -I", "All, but listed")?>
+<?=mk_option($ini['exclude'], "-A -E", "Only selected")?>
+<?=mk_option($ini['exclude'], "-A -I", "All, but selected")?>
 <?=mk_option($ini['exclude'], "-A", "All")?>
   </select></td>
   </tr>
-  <tr><td></td><td><input type="text" name="excludeList" maxlength="200" value="<?=$ini['excludeList']?>">
-    Comma separated list of devices (e.g. sda,sdb).</td>
+  <tr><td></td><td><select id="excludeList" name="excludeList[]" multiple>
+<?
+$excludesMarked = $ini['excludeList'];
+$excludesMarkedArray = explode (",", $excludesMarked);
+foreach ($sExcludeList as $excludeOption){
+  $selected = "";
+  foreach ($excludesMarkedArray as $string){
+    if (strpos($excludeOption, $string) !== false) $selected = " selected";
+  }
+  $parts = explode ("|", $excludeOption);
+  echo ("<option name=\"$selected\" value=\"$parts[1]\"$selected>$excludeOption</option>\n");
+}
+?>
+    </select>Multiselect with &lt;Ctrl&gt; or &lt;Shift&gt; key.</td>
   </tr>
   <tr><td>Extra delay after array inactivity (minutes):</td>
   <td><input type="text" name="timeout" maxlength="2" value="<?=$ini['timeout']?>"></td>
