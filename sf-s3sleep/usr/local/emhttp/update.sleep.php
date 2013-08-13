@@ -55,6 +55,9 @@ foreach ($_GET as $key => $value) {
   case 'stopDay':
   case 'stopHour':
   case 'pingIP':
+    $list = explode(',', $value);
+    foreach ($list as $insert) $options .= "-{$prefix[$key]} $insert ";
+    break;
   default:
     if (substr($key,0,1)!='#') $options .= (isset($prefix[$key]) ? "-{$prefix[$key]} " : "")."$value ";
     break;
