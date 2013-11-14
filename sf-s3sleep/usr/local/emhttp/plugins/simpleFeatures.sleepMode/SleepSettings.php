@@ -48,7 +48,7 @@ function countSelected(id){
   return count;
 }
 function prepareSleep(form) {
-  if (countSelected('excludeList') == 0) {
+  if (!document.getElementById('excludeList').disabled && countSelected('excludeList') == 0) {
     document.getElementsByName('exclude')[0].scrollIntoView();
     alert ("Please select at least one drive to exclude/include!");
     return false;
