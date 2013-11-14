@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY plugin "ProFTPD">
 <!ENTITY author "SlrG">
-<!ENTITY plgver "0.5g">
+<!ENTITY plgver "0.5j">
 <!ENTITY pkg "/boot/packages">
 <!ENTITY pld "/boot/config/plugins/">
 <!ENTITY plg "/boot/config/plugins/proftpd">
@@ -34,6 +34,9 @@ Version history:
  2013-05-28 - version 0.5e : Fixed openssl dependency.
  2013-05-28 - version 0.5f : Move binary files from github to personal webspace and change version check.
  2013-07-17 - version 0.5g : Fixed problem that slashes were removed from proftpd.conf on save and removed unnecessary sudo commands. (Thanks Necrotic!)
+ 2013-11-08 - version 0.5h : Downgraded openssl to 0.9.8n because 1.0.1c was creating problems with other plugins using the older version. (Thanks Madhouse!)
+ 2013-11-13 - version 0.5i : Fixed refresh of control panel plugin by adding sudo -u root to restart of inetd.
+ 2013-11-13 - version 0.5j : Added scripts to mount directories on array start and unmount them on array stop.
 
 Plugin file locations:
  /boot/config/plugins/proftpd.plg                                     # this file
@@ -44,6 +47,7 @@ Plugin file locations:
 
  /boot/config/plugins/proftpd/appver.txt                              # appversion file
  /boot/config/plugins/proftpd/device_status.png                       # icon file
+ /boot/config/plugins/proftpd/mountscript.sh                          # script to mount directories on array start
  /boot/config/plugins/proftpd/new_config.png                          # icon file
  /boot/config/plugins/proftpd/openssl- ... .txz                       # openssl package
  /boot/config/plugins/proftpd/proftpd-x.x.x-sql.tgz                   # selfbuilt proftpd package with many additional modules
@@ -52,6 +56,8 @@ Plugin file locations:
  /boot/config/plugins/proftpd/proftpd.png                             # icon file
  /boot/config/plugins/proftpd/proftpd.cfg                             # plugin page config file
  /boot/config/plugins/proftpd/proftpdce.zip                           # proftpd config editor files
+ /boot/config/plugins/proftpd/unmountscript.sh                        # script to unmount directories on array stop
+
  $Webroot/proftpd/                                                    # proftpd config editor files
 
  /usr/local/emhttp/plugins/images/device_status.png                   # plugin page icon file
@@ -111,8 +117,6 @@ rmRecursiveNoWarn() {
 #Selfremoval commands to force the redownload of updated files
 echo
 echo "Executing selfremoval commands if present..."
-echo " removing proftpdce.zip" &amp; rmNoWarn &plg;/proftpdce.zip &amp; sed -i -e '/removemark0001/d' &pld;/proftpd.plg                      # removemark0001
-(source &wsc;; echo " removing proftpdce from $path/proftpd"; rmRecursiveNoWarn $path/proftpd) &amp; sed -i -e '/removemark0002/d' &pld;/proftpd.plg # removemark0002
 
 #One-time remove of legacy packages from previous proftpd plugin versions
 rmNoWarn &plg;/proftpdce.php                             # file is now part of proftpdce.zip
@@ -228,9 +232,15 @@ SlrG
 <LOCAL>&plg;/new_config.png</LOCAL>
 </FILE>
 
+<FILE Name="&plg;/openssl-0.9.8n-i486-1.txz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &dsv;/openssl-0.9.8n-i486-1.txz</URL>
+</FILE>
+
+<?ignore
 <FILE Name="&plg;/openssl-1.0.1c-i486-3.txz" Run="upgradepkg --install-new">
 <URL>-q --no-check-certificate &dsv;/openssl-1.0.1c-i486-3.txz</URL>
 </FILE>
+?>
 
 <FILE Name="&plg;/proftpd.conf">
 <INLINE>
@@ -335,9 +345,9 @@ SERVICE="disable"
   <div id="title">
     <span class="left">Status:&#32;<img src='/plugins/images/device_status.png'>
       <?if ($proftpd_running=="yes"):?>
-        <span class="green"><b>RUNNING</b></span></a>
+        <span style="color:#6FA239"><b>RUNNING</b></span></a>
       <?else:?>
-        <span class="red"><b>STOPPED</b></span>
+        <span style="color:#CC3300"><b>STOPPED</b></span>
       <?endif;?>
     </span>
   </div>
@@ -372,34 +382,42 @@ SERVICE="disable"
       <tr style="font-weight:bold; background:#FFFFFF;">
         <td style="text-align:left;padding-left:12px;">ProFTPD Package</td>
         <td>
-          <?if ($proftpd_localapp != "Unknown"):?>
-            <span class="green-text">v<?=$proftpd_localapp?></span>
+          <?if ($proftpd_localapp == "Unknown"):?>
+            <span style="color:#CC3300">UNKNOWN</span>
           <?else:?>
-            <span class="red-text">UNKNOWN</span>
+            <?if ($proftpd_localapp != $proftpd_remoteapp):?>
+              <span style="color:#CC3300">v<?=$proftpd_localapp?></span>
+            <?else:?>
+              <span style="color:#6FA239">v<?=$proftpd_localapp?></span>
+            <?endif;?>
           <?endif;?>
         </td>
         <td>
           <?if ($proftpd_remoteapp != "Unknown"):?>
-            <span class="green-text">v<?=$proftpd_remoteapp?></span>
+            <span style="color:#6FA239">v<?=$proftpd_remoteapp?></span>
           <?else:?>
-            <span class="red-text">UNKNOWN</span>
+            <span style="color:#CC3300">UNKNOWN</span>
           <?endif;?>
         </td>
       </tr>
       <tr style="font-weight:bold; background:#FFFFFF;">
         <td style="text-align:left;padding-left:12px;">ProFTPD Plugin</td>
         <td>
-          <?if ($proftpd_localplg != "Unknown"):?>
-              <span class="green-text">v<?=$proftpd_localplg?></span>
+          <?if ($proftpd_localplg == "Unknown"):?>
+            <span style="color:#CC3300">UNKNOWN</span>
           <?else:?>
-            <span class="red-text">UNKNOWN</span>
+            <?if ($proftpd_localplg != $proftpd_remoteplg):?>
+              <span style="color:#CC3300">v<?=$proftpd_localplg?></span>
+            <?else:?>
+              <span style="color:#6FA239">v<?=$proftpd_localplg?></span>
+            <?endif;?>
           <?endif;?>
         </td>
         <td>
           <?if ($proftpd_remoteplg != "Unknown"):?>
-              <span class="green-text">v<?=$proftpd_remoteplg?></span>
+              <span style="color:#6FA239">v<?=$proftpd_remoteplg?></span>
           <?else:?>
-            <span class="red-text">UNKNOWN</span>
+            <span style="color:#CC3300">UNKNOWN</span>
           <?endif;?>
         </td>
       </tr>
@@ -629,7 +647,6 @@ function proftpd_updateplg()
   if [ "$DRUNNING" == "1" ]; then
     proftpd_start
   fi
-
 }
 
 function proftpd_updateapp()
@@ -815,10 +832,31 @@ exit 0
 </INLINE>
 </FILE>
 
+<FILE Name="&plg;/mountscript.sh">
+<INLINE>
+#!/bin/bash
+# put your commands for creating mount points and mounting here
+# they will be executed when the array starts
+# e.g.:
+# mkdir /mnt/cache/FTP/movies;mount --bind /mnt/user0/movies /mnt/cache/FTP/movies
+</INLINE>
+</FILE>
+
+<FILE Name="&plg;/unmountscript.sh">
+<INLINE>
+#!/bin/bash
+# put your commands for unmounting and removing mount points here
+# they will be executed when the array stops
+# e.g.:
+# umount /mnt/cache/FTP/movies;rmdir /mnt/cache/FTP/movies
+</INLINE>
+</FILE>
+
 <!-- event handler -->
 <FILE Name="&gui;/event/disks_mounted" Mode="0770">
 <INLINE>
 #!/bin/bash
+&plg;/mountscript.sh
 /etc/rc.d/rc.proftpd start
 </INLINE>
 </FILE>
@@ -828,6 +866,7 @@ exit 0
 <INLINE>
 #!/bin/bash
 /etc/rc.d/rc.proftpd stop
+&plg;/unmountscript.sh
 </INLINE>
 </FILE>
 
@@ -888,7 +927,7 @@ if [[ -n $(sed -n '/^ftp/p' /etc/inetd.conf) ]]; then
   echo "Disable builtin FTP-Server..."
   /bin/sed -i -e "s/^ftp/#ftp/" /etc/inetd.conf
   echo "Restart inetd to apply change..."
-  /etc/rc.d/rc.inetd restart
+  /usr/bin/sudo -u root /etc/rc.d/rc.inetd restart
   echo "Disable icon of builtin FTP-Server..."
   mv /usr/local/emhttp/plugins/webGui/FTP.page /usr/local/emhttp/plugins/webGui/FTP.page.bak
   echo "Remove example config file..."
