@@ -1,0 +1,828 @@
+<?xml version='1.0' standalone='yes'?>
+
+<!DOCTYPE PLUGIN [
+<!ENTITY plugin "glFTPd">
+<!ENTITY author "SlrG">
+<!ENTITY plgver "0.1a">
+<!ENTITY pkg "/boot/packages">
+<!ENTITY pld "/boot/config/plugins/">
+<!ENTITY plg "/boot/config/plugins/glftpd">
+<!ENTITY img "/usr/local/emhttp/plugins/images">
+<!ENTITY gui "/usr/local/emhttp/plugins/glftpd">
+<!ENTITY ghm "https://github.com/SlrG/unRAIDplugins/raw/master/glftpd">
+<!ENTITY dsv "http://www.sdevel.de/glftpd">
+]>
+
+<PLUGIN>
+<!--
+Copyright 2013, SlrG
+glFTPd Plugin for unRAID
+
+Version history:
+ 2013-07-11 - version 0.1  : First release
+ 2013-07-11 - version 0.1a : Removed tip to use mount bind, as mount and umount scripts are already included.
+ 
+Plugin file locations:
+ /boot/config/plugins/glftpd.plg                                      # this file
+ /tmp/plugin-prepare                                                  # plugin prepare script
+ /tmp/glftpd-cleanup                                                  # plugin cleanup script
+
+ /boot/config/plugins/glftpd/README                                   # README file
+
+ /boot/config/plugins/glftpd/appver.txt                               # appversion file
+ /boot/config/plugins/glftpd/device_status.png                        # icon file
+ /boot/config/plugins/glftpd/glftpd-LNX-x.x_x86.tgz                   # selfbuilt glftpd package with many additional modules
+ /boot/config/plugins/glftpd/glftpd.conf                              # glftpd config file
+ /boot/config/plugins/glftpd/glftpd.gif                               # icon file
+ /boot/config/plugins/glftpd/glftpd.cfg                               # plugin page config file
+ /boot/config/plugins/glftpd/information.png                          # icon file
+ /boot/config/plugins/glftpd/mountscript.sh                           # script to mount directories on array start
+ /boot/config/plugins/glftpd/new_config.png                           # icon file
+ /boot/config/plugins/glftpd/openssl- ... .txz                        # openssl package
+ /boot/config/plugins/glftpd/unmountscript.sh                         # script to unmount directories on array stop
+
+ /usr/local/emhttp/plugins/images/device_status.png                   # plugin page icon file
+ /usr/local/emhttp/plugins/images/information.png                     # plugin page icon file
+ /usr/local/emhttp/plugins/images/new_config.png                      # plugin page icon file
+
+ /usr/local/emhttp/plugins/glftpd/glftpd.gif                          # plugin page icon file
+ /usr/local/emhttp/plugins/glftpd/glftpd.page                         # plugin page file
+ /usr/local/emhttp/plugins/glftpd/glftpd.php                          # plugin page file
+ /usr/local/emhttp/plugins/glftpd/event/disks_mounted                 # event handler will start glftpd
+ /usr/local/emhttp/plugins/glftpd/event/unmounting_disks              # event handler will stop glftpd
+
+ /etc/rc.d/rc.glftpd                                                  # glftpd startup script
+ /var/log/plugins/glftpd                                              # record of previous plugin installation
+ /tmp/glftpd-install                                                  # plugin installation script
+-->
+
+<FILE Name="/tmp/plugin-prepare" Run="/bin/bash">
+<INLINE>
+#!/bin/bash
+echo ""
+echo ""
+echo "*************************************************************"
+echo "* &plugin; plugin installation started..."
+echo "*************************************************************"
+echo ""
+
+# Wait until network is ready
+timer=30
+while [ $timer -gt 0 ]; do
+  gateway=$(route -n | awk '/^0.0.0.0/ {print $2}')
+  if [ -n "$gateway" ] &amp;&amp; [ $(ping -q -n -c 1 $gateway | awk -F, '/received/ {print $2}' | awk '{print $1}') -eq 1 ]; then
+    break
+  fi
+  timer=$((timer-1))
+  sleep 1
+done
+if [ $timer -eq 0 ]; then
+  echo "No network communication !!!"
+fi
+# Remove this script
+rm -f /tmp/plugin-prepare
+</INLINE>
+</FILE>
+
+<FILE Name="/tmp/plugin-cleanup" Run="/bin/bash">
+<INLINE>
+# delete file but don't warn if file does not exist
+rmNoWarn() {
+  test -e $1 &amp;&amp; rm $1 2>/dev/null
+}
+
+# delete directory but don't warn if directory does not exist
+rmRecursiveNoWarn() {
+  test -e $1 &amp;&amp; rm -r $1 2>/dev/null
+}
+
+#Selfremoval commands to force the redownload of updated files
+echo
+echo "Executing selfremoval commands if present..."
+
+#One-time remove of legacy packages from previous glftpd plugin versions
+
+#Remove currently installed plugin files
+rmNoWarn /etc/rc.d/rc.glftpd                             # control script
+rmRecursiveNoWarn /usr/local/emhttp/plugins/glftpd       # glftpd unraid webgui integration files
+rmNoWarn /var/log/plugins/glftpd                         # record of previous plugin installation
+
+rm /tmp/plugin-cleanup
+</INLINE>
+</FILE>
+
+<FILE Name="/boot/config/plugins/glftpd/README">
+<INLINE>
+                                Credits:
+                             **************
+Great thanks go to Limetech for giving us unRAID. To the glFTPd project for
+their feature rich ftp server and the icon I used for this plugin.
+
+Further thanks go to overbyrn. This Plugin uses a lot of his code he did for
+his nzbget plugin. Please check it out, it is really great! Also to Benni-Chan,
+Influencer, prostuff1 and speeding_ant for their great plugins. Studying their
+code was what made this plugin possible.
+                             **************
+
+Be aware, that this plugin DOESN'T use tcpd for glftpd access and does a NOT
+jailed installation.
+
+After the installation glftpd will only be available locally through your
+servers console or a telnet session. Only a single administrative FTP user
+named glftpd was created and has the password glftpd.
+
+This user has full access to glftpd's features and can only log in to the ftp
+service from the system itself (localhost).
+
+To log on enter "ftp localhost &lt;port&gt;", with &lt;port&gt; being the portnumber you
+chose in the plugin settings (default is: 1337).
+
+You have to create new users and make them accessible from other hosts yourself.
+For further information start reading from:
+https://wiki.archlinux.org/index.php/glftpd#local_testing
+and the glftpd.docs from here:
+http://glftpd.dk/files/docs/glftpd.docs
+
+SlrG
+</INLINE>
+</FILE>
+
+<FILE Name="&plg;/device_status.png">
+<URL>-q --no-check-certificate &dsv;/device_status.png</URL>
+</FILE>
+
+<FILE Name="&img;/device_status.png">
+<LOCAL>&plg;/device_status.png</LOCAL>
+</FILE>
+
+<FILE Name="&plg;/information.png">
+<URL>-q --no-check-certificate &dsv;/information.png</URL>
+</FILE>
+
+<FILE Name="&img;/information.png">
+<LOCAL>&plg;/information.png</LOCAL>
+</FILE>
+
+<FILE Name="&plg;/new_config.png">
+<URL>-q --no-check-certificate &dsv;/new_config.png</URL>
+</FILE>
+
+<FILE Name="&img;/new_config.png">
+<LOCAL>&plg;/new_config.png</LOCAL>
+</FILE>
+
+<FILE Name="&plg;/openssl-0.9.8n-i486-1.txz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &dsv;/openssl-0.9.8n-i486-1.txz</URL>
+</FILE>
+
+<FILE Name="&plg;/glftpd.conf">
+<URL>-q --no-check-certificate &dsv;/glftpd.conf</URL>
+</FILE>
+
+<FILE Name="&plg;/glftpd.gif">
+<URL>-q --no-check-certificate &dsv;/glftpd.gif</URL>
+</FILE>
+
+<FILE Name="&gui;/glftpd.gif">
+<LOCAL>&plg;/glftpd.gif</LOCAL>
+</FILE>
+
+<FILE Name="&gui;/glftpd.page">
+<INLINE>
+Menu="NetworkServices"
+Icon="glftpd.gif"
+Version="&plgver;"
+Author="&author;"
+Type="php"
+Title="&plugin;"
+</INLINE>
+</FILE>
+
+<FILE Name="&plg;/glftpd.cfg">
+<INLINE>
+# glftpd configuration
+SERVICE="disable"
+EUWEEK="no"
+PORT="1337"
+INSTALLDIR="/boot/"
+</INLINE>
+</FILE>
+
+<FILE Name="&gui;/glftpd.php">
+<INLINE>
+&lt;?PHP
+  $glftpd_cfg = parse_ini_file( "&plg;/glftpd.cfg" );
+  $glftpd_curinstdir = $glftpd_cfg['INSTALLDIR'];
+  $glftpd_installed = is_dir( $glftpd_cfg['INSTALLDIR']) ? "yes" : "no";
+  $glftpd_localplg = shell_exec("/etc/rc.d/rc.glftpd getver plg local");
+  $glftpd_remoteplg = shell_exec("/etc/rc.d/rc.glftpd getver plg remote");
+  $glftpd_localapp = shell_exec("/etc/rc.d/rc.glftpd getver app local");
+  $glftpd_remoteapp = shell_exec("/etc/rc.d/rc.glftpd getver app remote");
+  $updateplg = '&plg;/updateplg';
+  $updates_exist = "false";
+  if ($glftpd_installed=="yes") {
+    $glftpd_running = trim(shell_exec ("/etc/rc.d/rc.glftpd running"));
+  }
+<![CDATA[
+?>
+<div style="width: 49%; float:left">
+  <div id="title">
+    <span class="left">Status:&#32;<img src='/plugins/images/device_status.png'>
+      <?if ($glftpd_installed!="yes"):?>
+        <span style="color:#CC3300"><b>NOT INSTALLED</b></span>
+      <?else:?>
+        <?if ($glftpd_running=="RUNNING"):?>
+          <span style="color:#6FA239"><b>RUNNING</b></span>
+        <?else:?>
+          <span style="color:#CC3300"><b>STOPPED</b></span>
+        <?endif;?>
+      <?endif;?>
+    </span>
+  </div>
+  <?if ($glftpd_installed=="yes"):?>
+    <div style="position:relative;float:left;width:100%;text-align:center;margin-bottom:24px">
+      <form name="glftpd_start" method="POST" action="/update.htm" target="progressFrame">
+        <input type="hidden" name="cmd" value="/etc/rc.d/rc.glftpd start">
+        <input type="submit" name="runCmd" value="Start">
+      </form>
+      <form name="glftpd_stop" method="POST" action="/update.htm" target="progressFrame">
+        <input type="hidden" name="cmd" value="/etc/rc.d/rc.glftpd stop">
+        <input type="submit" name="runCmd" value="Stop">
+      </form>
+      <form name="glftpd_restart" method="POST" action="/update.htm" target="progressFrame">
+        <input type="hidden" name="cmd" value="/etc/rc.d/rc.glftpd restart">
+        <input type="submit" name="runCmd" value="Restart">
+      </form>
+    </div>
+  <?endif;?>
+  <div style="position:relative;float:left;width:100%;text-align:center;margin-top:24px;margin-bottom:24px">
+    <table>
+      <tr style="font-weight:bold; color:#333333; background:#F0F0F0; text-shadow:0 1px 1px #FFFFFF;">
+        <td  style="text-align:left;padding-left:12px;">Package/Plugin</td>
+        <td>Local Version</td>
+        <td>Online Version</td>
+      </tr>
+      <tr style="font-weight:bold; background:#FFFFFF;">
+        <td style="text-align:left;padding-left:12px;">glFTPd Package</td>
+        <td>
+          <?if ($glftpd_localapp == "Unknown"):?>
+            <span style="color:#CC3300">UNKNOWN</span>
+          <?else:?>
+            <?if ($glftpd_localapp != $glftpd_remoteapp):?>
+              <span style="color:#CC3300">v<?=$glftpd_localapp?></span>
+            <?else:?>
+              <span style="color:#6FA239">v<?=$glftpd_localapp?></span>
+            <?endif;?>
+          <?endif;?>
+        </td>
+        <td>
+          <?if ($glftpd_remoteapp != "Unknown"):?>
+            <span style="color:#6FA239">v<?=$glftpd_remoteapp?></span>
+          <?else:?>
+            <span style="color:#CC3300">UNKNOWN</span>
+          <?endif;?>
+        </td>
+      </tr>
+      <tr style="font-weight:bold; background:#FFFFFF;">
+        <td style="text-align:left;padding-left:12px;">glFTPd Plugin</td>
+        <td>
+          <?if ($glftpd_localplg == "Unknown"):?>
+            <span style="color:#CC3300">UNKNOWN</span>
+          <?else:?>
+            <?if ($glftpd_localplg != $glftpd_remoteplg):?>
+              <span style="color:#CC3300">v<?=$glftpd_localplg?></span>
+            <?else:?>
+              <span style="color:#6FA239">v<?=$glftpd_localplg?></span>
+            <?endif;?>
+          <?endif;?>
+        </td>
+        <td>
+          <?if ($glftpd_remoteplg != "Unknown"):?>
+              <span style="color:#6FA239">v<?=$glftpd_remoteplg?></span>
+          <?else:?>
+            <span style="color:#CC3300">UNKNOWN</span>
+          <?endif;?>
+        </td>
+      </tr>
+    </table>
+  </div>
+  <br />
+  <div style="position:relative;float:left;width:100%;margin-top:24px;margin-bottom:24px">
+    <table>
+      <tr style="font-weight:bold; color:#333333; background:#F0F0F0; text-shadow:0 1px 1px #FFFFFF;">
+        <td style="padding-left:12px;" colspan="2">Updates</td>
+      </tr>
+      <?if (($glftpd_remoteplg != $glftpd_localplg) && ($glftpd_localplg != "Unknown") && ($glftpd_remoteplg != "Unknown")): ?>
+        <tr>
+        <td style="padding-left:12px;"width="30%">
+          <form name="glftpd_updateplg" method="POST" action="/update.htm" target="progressFrame">
+            <input type="hidden" name="cmd" value="/etc/rc.d/rc.glftpd updateplg">
+            <input type="submit" name="runCmd" value="Update Plugin">
+          </form>
+        </td>
+          <td>An update is available to the plugin</td>
+        </tr>
+        <?$updates_exist="true"?>
+      <?endif;?>
+
+      <?if (($glftpd_remoteapp != $glftpd_localapp) && ($glftpd_localapp != "Unknown") && ($glftpd_remoteapp != "Unknown")): ?>
+        <tr>
+          <td style="padding-left:12px;"width="30%">
+          <form name="glftpd_updateapp" method="POST" action="/update.htm" target="progressFrame">
+            <input type="hidden" name="cmd" value="/etc/rc.d/rc.glftpd updateapp">
+            <input type="submit" name="runCmd" value="Update glftpd">
+          </form>
+          </td>
+          <td>An update is available to glftpd</td>
+        </tr>
+        <?$updates_exist="true"?>
+      <?endif;?>
+
+      <?if ($updates_exist=="false"):?>
+        <tr>
+          <td colspan="2" align="center">No updates available at this time</td>
+        </tr>
+      <?endif;?>
+    </table>
+  </div>
+</div>
+<div style="width: 49%; float:right">
+  <div id="title">
+    <span class="left">Configuration:&#32;<img src='/plugins/images/new_config.png'></span>
+  </div>
+  <form name="glftpd_settings" method="POST" action="/update.htm" target="progressFrame" onsubmit="validateForm();">
+    <input type="hidden" name="cmd" value="/etc/rc.d/rc.glftpd">
+    <input type="hidden" name="arg5" value="<?=$glftpd_curinstdir;?>">
+    <table class="settings">
+      <tr>
+        <td>Enable glFTPd:</td>
+        <td>
+          <select name="arg1" size="1">
+            <?=mk_option($glftpd_cfg['SERVICE'], "disable", "No");?>
+            <?=mk_option($glftpd_cfg['SERVICE'], "enable", "Yes");?>
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <td>Use European Weeks:</td>
+        <td>
+          <select name="arg2" id="arg2" size="1">
+            <?=mk_option($glftpd_cfg['EUWEEK'], "no", "No");?>
+            <?=mk_option($glftpd_cfg['EUWEEK'], "yes", "Yes");?>
+          </select>
+          <img src="/plugins/images/information.png" title="Use European weeks (Mon-Sun) when modifying stats."/></td>
+        </td>
+      </tr>
+      <tr>
+        <td>glFTPd Port:</td>
+        <td><input type="text" name="arg3" id="arg3" maxlength="60" value="<?=$glftpd_cfg['PORT'];?>">
+        <img src="/plugins/images/information.png" title="If you choose port 21, make sure you have no other FTP-Server running there!"/></td>
+      </tr>
+      <tr>
+        <td>glFTPd Installation Directory:</td>
+        <td><input type="text" name="arg4" id="arg4" maxlength="60" value="<?=$glftpd_cfg['INSTALLDIR'];?>">
+        <img src="/plugins/images/information.png" title="Make sure to set this to be on your cache drive or an array disk! Putting it on a share with split level is not recommended!"/></td>
+      </tr>
+      <tr>
+        <td></td>
+        <td style="font-weight:normal; font-size:80%;">A subdirectory <strong>glftpd</strong> will be automatically<br />
+          created! Put all files and folders you want<br />
+          to be accessible in the /site subdir there.</td>
+      </tr>
+      <tr>
+        <td></td>
+      </tr>
+    </table>
+    <div align="center">
+      <hr size="3" align="center" width="75%" color="grey" style="margin-top:15px;margin-bottom:15px" >
+      <input type="submit" name="runCmd" value="Apply" style="margin-bottom:15px">
+      <button type="button" style="margin-bottom:15px" onClick="done();">Done</button>
+      <hr size="3" align="center" width="75%" color="grey" style="margin-bottom:15px" >
+    </div>
+  </form>
+  <span>
+    For the initial test and setup start reading <a href="https://wiki.archlinux.org/index.php/glftpd#local_testing" target="_blank">here</a>.<br />
+    For all details have a look at the <a href="http://glftpd.dk/files/docs/glftpd.docs" target="_blank">glftpd.docs</a>.
+  </span>
+</div>
+<div style="position:relative;float:left;width:100%;text-align:right; margin-bottom:24px">
+  <span></span>
+</div>
+<script type="text/javascript">
+  function validateForm() {
+    document.getElementById('arg2').disabled = false;
+    document.getElementById('arg3').disabled = false;
+    document.getElementById('arg4').disabled = false;
+  }
+
+  function checkENABLED(form) {
+    if ("<?=$glftpd_cfg['SERVICE'];?>" == "enable") {
+      form.arg2.disabled = true;
+      form.arg3.disabled = true;
+      form.arg4.disabled = true;
+    }
+  }
+
+  checkENABLED(document.glftpd_settings);
+</script>
+]]>
+</INLINE>
+</FILE>
+
+<FILE Name="/etc/rc.d/rc.glftpd"  Mode="0770">
+<INLINE>
+#!/bin/bash
+
+# glftpd files
+FTPD_BIN=/usr/local/sbin/glftpd
+FTPD_CFG=/etc/glftpd.conf
+CONFIG=&plg;/glftpd.cfg
+# read our configuration
+source $CONFIG
+
+write_config()
+{
+  echo "# glftpd configuration" > &plg;/glftpd.cfg
+  echo "SERVICE=\"$SERVICE\"" >> &plg;/glftpd.cfg
+  echo "EUWEEK=\"$EUWEEK\"" >> &plg;/glftpd.cfg
+  echo "PORT=\"$PORT\"" >> &plg;/glftpd.cfg
+  echo "INSTALLDIR=\"$INSTALLDIR\"" >> &plg;/glftpd.cfg
+}
+
+glftpd_install()
+{
+  echo Installing glftpd...
+  sleep 1
+  if [ ! -d "$INSTALLDIR/glftpd" ]; then
+    echo "Unpacking files to ${INSTALLDIR}/glftpd"
+    tar xvf &plg;/glftpd-LNX-*.tgz -C $INSTALLDIR
+  else
+    echo Error: glftpd directory already exists!
+    sleep 2
+  fi
+}
+
+glftpd_enable()
+{
+  echo "Applying Settings ($1) ..."
+  sleep 2
+  SERVICE="$1" #enable
+  EUWEEK="$2"
+  PORT="$3"
+  INSTALLDIR="$4"
+  PREVINST="$5"
+  write_config
+  
+  if [ "$PREVINST" != "$INSTALLDIR" ]; then  
+    if [ -f "$PREVINST/glftpd/bin/glftpd" ]; then
+      echo "Previous installation location detected, moving/renaming..."
+      sleep 2
+      mv $PREVINST/glftpd $INSTALLDIR/glftpd
+    else
+      glftpd_install
+    fi
+  else
+    if [ ! -f "$INSTALLDIR/glftpd/bin/glftpd" ]; then
+      glftpd_install
+    else
+      echo "Installation exists, updating config only"
+      sleep 2
+    fi
+  fi 
+  glftpd_start
+  echo "... OK"
+  sleep 1
+}
+
+glftpd_disable()
+{
+  echo "Applying Settings ($1) ..."
+  sleep 2
+  glftpd_stop
+  SERVICE="$1" #disable
+  EUWEEK="$2"
+  PORT="$3"
+  INSTALLDIR="$4"
+  write_config
+  echo "... OK"
+  sleep 1
+}
+
+function glftpd_running ()
+{
+  command="/bin/echo \"open localhost $PORT\" | /usr/kerberos/bin/ftp -nv 2> /dev/null"
+  output=$(eval $command)
+  if [[ $output == *glFTPd* ]]; then
+    echo "RUNNING";
+  else
+    echo "STOPPED";
+  fi
+}
+
+function glftpd_start ()
+{
+  echo Restore glftpd config files...
+  if [ ! -f "/etc/glftpd.conf" ]; then ln -s &plg;/glftpd.conf /etc/glftpd.conf; fi
+  sed -i "/^CERT_FILE/c\CERT_FILE $INSTALLDIR\/glftpd\/ftpd-ecdsa.pem" &plg;/glftpd.conf
+  sed -i "/^rootpath/c\rootpath\t$INSTALLDIR\/glftpd" &plg;/glftpd.conf
+  if [ ! -f "/etc/ssl/openssl.cnf" ]; then ln /etc/ssl/openssl.cfg /etc/ssl/openssl.cnf; fi
+  sed -i '/glftpd: ALL/d' /etc/hosts.allow
+  sed -i '0,/^$/ s/^$/glftpd: ALL\n/' /etc/hosts.allow
+  sed -i '/^glftpd/d' /etc/inetd.conf
+  if [[ "$EUWEEK" == *yes* ]]; then EUWEEKSTR=" -e"; else EUWEEKSTR=""; fi
+  echo "glftpd stream tcp nowait root $INSTALLDIR/glftpd/bin/glftpd glftpd -l -o -i -s$INSTALLDIR/glftpd/bin/glstrings.bin$EUWEEKSTR" >> /etc/inetd.conf
+  sed -i '/^glftpd/d' /etc/services
+  echo -e "glftpd\t\t$PORT/tcp" >> /etc/services
+  crontab -l > /tmp/crontab
+  sed -i '/glftpd/d' /tmp/crontab
+  echo "#glftpd reset statistics script" >> /tmp/crontab
+  echo "0  0 * * * $INSTALLDIR/glftpd/bin/reset -e" >> /tmp/crontab
+  crontab /tmp/crontab
+  cd $INSTALLDIR/glftpd
+  if [ ! -f "$INSTALLDIR/glftpd/ftpd-ecdsa.pem" ]; then $INSTALLDIR/glftpd/create_server_key.sh glftpd > /dev/null; fi
+  cd /
+  echo ...OK
+  sleep 1
+  echo Restarting inetd with glftpd...
+  /usr/bin/sudo -u root /etc/rc.d/rc.inetd restart > /dev/null
+  echo "...OK"
+  sleep 1
+}
+
+function glftpd_stop()
+{
+  echo Removing glftpd config files...
+  if [ -f "/etc/glftpd.conf" ]; then rm /etc/glftpd.conf; fi
+  sed -i '/^glftpd/d' /etc/hosts.allow
+  sed -i '/^glftpd/d' /etc/inetd.conf
+  sed -i '/^glftpd/d' /etc/services
+  crontab -l > /tmp/crontab
+  sed -i '/glftpd/d' /tmp/crontab
+  crontab /tmp/crontab
+  echo ...OK
+  sleep 1
+  echo Restarting inetd without glftpd...
+  /usr/bin/sudo -u root /etc/rc.d/rc.inetd restart > /dev/null
+  echo "...OK"
+  sleep 1  
+}
+
+function glftpd_restart()
+{
+  if [ $(/etc/rc.d/rc.glftpd running) == "RUNNING" ]; then
+    echo "Restarting glftpd..."
+    sleep 1
+    /usr/bin/sudo -u root /etc/rc.d/rc.inetd restart > /dev/null
+    echo "...OK"
+    sleep 1
+    exit 0
+  else
+    echo "glftpd not running"
+    sleep 1
+    exit -1
+  fi
+}
+
+function glftpd_updateplg()
+{
+  if [ $(/etc/rc.d/rc.glftpd running) == "RUNNING" ]; then
+    DRUNNING="1"
+    glftpd_stop
+  fi
+  echo "Downloading plugin..."
+  wget -q -P /tmp --no-check-certificate &ghm;/glftpd.plg 2>/dev/null
+  if [ ! -f /tmp/glftpd.plg ]; then
+    echo "Download failed, update aborted!"
+    sleep 2
+  else
+    echo "...OK"
+    sleep 1
+    echo  "Updating plugin..."
+    sleep 1
+    mv -f &pld;/glftpd.plg &pld;/glftpd.plg.sav 2>/dev/null
+    mv -f /tmp/glftpd.plg &pld;/glftpd.plg 2>/dev/null
+    /usr/local/sbin/installplg &pld;/glftpd.plg >/dev/null
+    echo "...OK"
+    sleep 1
+  fi
+  if [ "$DRUNNING" == "1" ]; then
+    glftpd_start
+  fi
+}
+
+function glftpd_updateapp()
+{
+  if [ $(/etc/rc.d/rc.glftpd running) == "RUNNING" ]; then
+    DRUNNING="1"
+    glftpd_stop
+  fi
+  echo "Downloading Update..."
+  APPVER=$(wget --no-check-certificate &dsv;/appver.txt -q -O -)
+  PKG="glftpd-LNX-${APPVER}_x86.tgz"
+  wget -q -P /tmp --no-check-certificate &dsv;/$PKG 2>/dev/null
+  wget -q -P /tmp --no-check-certificate &dsv;/appver.txt 2>/dev/null
+  if [ ! -f /tmp/$PKG ]; then
+    echo "Download failed, update aborted!"
+    sleep 2
+  else
+    echo "...OK"
+    sleep 1
+    echo "Updating Application..."
+    sleep 1
+    LCLPKG=$(basename /var/log/packages/glftpd*).tgz
+    tar xvf /tmp/$PKG -C $INSTALLDIR --exclude=glftpd/etc --exclude=glftpd/ftp-data --exclude=glftpd/site > /dev/null
+    rm -f &plg;/*.tgz 2>/dev/null
+    rm -f &plg;/appver.txt 2>/dev/null
+    mv -f /tmp/$PKG &plg; 2>/dev/null
+    mv -f /tmp/appver.txt &plg; 2>/dev/null
+    echo "...OK"
+    sleep 1
+  fi
+  if [ "$DRUNNING" == "1" ]; then
+    glftpd_start
+  fi
+}
+
+function glftpd_plgver()
+{
+  case "$1" in
+    'local')
+      if [ -f &pld;/glftpd.plg ]; then
+        VERSION=$(grep "&lt;\!ENTITY plgver" &pld;/glftpd.plg | cut -d\" -f2)
+      else
+        VERSION=Unknown
+    fi
+    ;;
+    'remote')
+      VERSION=$(wget --no-check-certificate &ghm;/glftpd.plg -q -O - | grep "&lt;\!ENTITY plgver" | cut -d\" -f2)
+      if [ "$VERSION" == "" ]; then
+        VERSION=Unknown
+      fi
+    ;;
+  esac
+  echo -n "$VERSION"
+}
+
+function glftpd_appver()
+{
+  case "$1" in
+    'local')
+      VERSION=$(cat &plg;/appver.txt)
+      if [ "$VERSION" == "" ]; then
+        VERSION=Unknown
+      fi
+    ;;
+    'remote')
+      VERSION=$(wget --no-check-certificate &dsv;/appver.txt -q -O - )
+      if [ "$VERSION" == "" ]; then
+        VERSION=Unknown
+      fi
+    ;;
+  esac
+  echo -n "$VERSION"
+}
+
+function glftpd_getver()
+{
+  if [[ ! -z $1 &amp;&amp; ! -z $2 ]]; then
+  case "$1" in
+    'plg')
+      glftpd_plgver $2
+    ;;
+    'app')
+      glftpd_appver $2
+    ;;
+  esac
+  else
+    echo "usage $0 getver plg|app local|remote"
+  fi
+}
+
+case $1 in
+
+  start)
+    glftpd_start
+    ;;
+
+  stop)
+    glftpd_stop
+    ;;
+
+  restart)
+    glftpd_restart
+    ;;
+    
+  enable)
+    glftpd_enable $1 $2 $3 $4 $5
+    ;;
+
+  disable)
+    glftpd_disable $1 $2 $3 $4 $5
+    ;;
+
+  running)
+    glftpd_running
+    ;;
+
+  updateplg)
+    glftpd_updateplg
+    ;;
+
+  updateapp)
+    glftpd_updateapp
+    ;;
+
+  getver)
+    glftpd_getver $2 $3
+    ;;
+
+  *)
+    echo "usage: $0 {enable|disable|running|start|stop|restart|updateplg|updateapp|getver}"
+    exit 1
+    ;;
+
+esac
+exit 0
+</INLINE>
+</FILE>
+
+<FILE Name="&plg;/mountscript.sh">
+<INLINE>
+#!/bin/bash
+# put your commands for creating mount points and mounting here
+# they will be executed when the array starts
+# e.g.:
+# mkdir /mnt/cache/glftpd/site/movies;mount --bind /mnt/user0/movies /mnt/cache/glftpd/site/movies
+</INLINE>
+</FILE>
+
+<FILE Name="&plg;/unmountscript.sh">
+<INLINE>
+#!/bin/bash
+# put your commands for unmounting and removing mount points here
+# they will be executed when the array stops
+# e.g.:
+# umount /mnt/cache/glftpd/site/movies;rmdir /mnt/cache/glftpd/site/movies
+</INLINE>
+</FILE>
+
+<!-- event handler -->
+<FILE Name="&gui;/event/disks_mounted" Mode="0770">
+<INLINE>
+#!/bin/bash
+&plg;/mountscript.sh
+/etc/rc.d/rc.glftpd start
+</INLINE>
+</FILE>
+
+<!-- event handler -->
+<FILE Name="&gui;/event/unmounting_disks" Mode="0770">
+<INLINE>
+#!/bin/bash
+/etc/rc.d/rc.glftpd stop
+&plg;/unmountscript.sh
+</INLINE>
+</FILE>
+
+<FILE Name="/var/log/plugins/glftpd">
+<INLINE>
+&plugin; v&plgver;
+</INLINE>
+</FILE>
+
+<FILE Name="/tmp/glftpd-install" Run="/bin/bash">
+<INLINE>
+#!/bin/bash
+# Get (if necessary) and install glftpd packages. This ensures the plugin will 
+# always install the latest available build.
+APPVER=$(wget --no-check-certificate &dsv;/appver.txt -q -O -)
+PKG="glftpd-LNX-${APPVER}_x86.tgz"
+echo "Looking for locally saved version of glftpd packages..."
+if [[ ! -e &plg;/$PKG ]]; then
+  echo "Local package does not exist, downloading $PKG to /tmp"
+  wget -q -P /tmp --no-check-certificate &dsv;/$PKG 2>/dev/null
+  wget -q -P /tmp --no-check-certificate &dsv;/appver.txt 2>/dev/null
+  echo "Deleting old builds from &plg;..."
+  rm -f &plg;/glftpd-*.tgz
+  rm -f &plg;/appver.txt
+  echo "Moving downloaded versions from /tmp/ to &plg;/..."
+  mv -f /tmp/$PKG &plg;
+  mv -f /tmp/appver.txt &plg;
+else  
+  echo "Found up to date local versions of glftpd packages..."
+fi  
+
+echo ""
+echo "*************************************************************"
+echo "* &plugin; plugin has been installed."
+echo "* Copyright 2013, &author;"
+echo "* Version: &plgver;"
+echo "*************************************************************"
+echo ""
+
+# Remove this install file - we are done!
+rm -f /tmp/glftpd-install
+</INLINE>
+</FILE>
+
+</PLUGIN>
