@@ -36,7 +36,7 @@ Version history:
  2013-11-08 - version 0.5h : Downgraded openssl to 0.9.8n because 1.0.1c was creating problems with other plugins using the older version. (Thanks Madhouse!)
  2013-11-13 - version 0.5i : Fixed refresh of control panel plugin by adding sudo -u root to restart of inetd.
  2013-11-13 - version 0.5j : Added scripts to mount directories on array start and unmount them on array stop.
- 2013-11-13 - version 0.5k : Removed SimpleFeatures recognition and added manual webserver configuration.
+ 2013-12-28 - version 0.5k : Removed SimpleFeatures recognition and added manual webserver configuration.
 
 Plugin file locations:
  /boot/config/plugins/proftpd.plg                                     # this file
