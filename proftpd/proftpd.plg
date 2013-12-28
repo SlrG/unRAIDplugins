@@ -3,14 +3,13 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY plugin "ProFTPD">
 <!ENTITY author "SlrG">
-<!ENTITY plgver "0.5j">
+<!ENTITY plgver "0.5k">
 <!ENTITY pkg "/boot/packages">
 <!ENTITY pld "/boot/config/plugins/">
 <!ENTITY plg "/boot/config/plugins/proftpd">
 <!ENTITY pid "/var/run/proftpd.pid">
 <!ENTITY img "/usr/local/emhttp/plugins/images">
 <!ENTITY gui "/usr/local/emhttp/plugins/proftpd">
-<!ENTITY wsc "/boot/config/simpleFeatures/simpleFeatures.web.server.cfg">
 <!ENTITY ghm "https://github.com/SlrG/unRAIDplugins/raw/master/proftpd">
 <!ENTITY dsv "http://www.sdevel.de/proftpd">
 ]>
@@ -37,6 +36,7 @@ Version history:
  2013-11-08 - version 0.5h : Downgraded openssl to 0.9.8n because 1.0.1c was creating problems with other plugins using the older version. (Thanks Madhouse!)
  2013-11-13 - version 0.5i : Fixed refresh of control panel plugin by adding sudo -u root to restart of inetd.
  2013-11-13 - version 0.5j : Added scripts to mount directories on array start and unmount them on array stop.
+ 2013-11-13 - version 0.5k : Removed SimpleFeatures recognition and added manual webserver configuration.
 
 Plugin file locations:
  /boot/config/plugins/proftpd.plg                                     # this file
@@ -114,9 +114,11 @@ rmRecursiveNoWarn() {
   test -e $1 &amp;&amp; rm -r $1 2>/dev/null
 }
 
-#Selfremoval commands to force the redownload of updated files
+#Selfremoval commands to force the redownload/recreation of updated files
 echo
 echo "Executing selfremoval commands if present..."
+rmNoWarn &plg;/README; sed -i '/#srmtag00001/d' &pld;/proftpd.plg        #README changed with 0.5k
+rmNoWarn &plg;/proftpd.cfg; sed -i '/#srmtag00002/d' &pld;/proftpd.plg   #proftpd.cfg changed with 0.5k
 
 #One-time remove of legacy packages from previous proftpd plugin versions
 rmNoWarn &plg;/proftpdce.php                             # file is now part of proftpdce.zip
@@ -140,8 +142,8 @@ their feature rich ftp server and the icon I used for this plugin.
 
 Further thanks go to overbyrn. This Plugin uses a lot of his code he did for
 his nzbget plugin. Please check it out, it is really great! Also to Benni-Chan,
-Influencer, prostuff1 and speeding_ant for their great plugins. Studying their
-code was what made this plugin possible.
+Influencer, prostuff1, speeding_ant and bonienl for their great plugins.
+Studying their code was what made this plugin possible.
                              **************
 
 HOWTO:
@@ -180,11 +182,13 @@ user3 will have access to dir_a and subdirectories but not to /mnt/cache/FTP or
       dir_b
 user4 will have access to dir_b and subdirectories but not to /mnt/cache/FTP or
       dir_a
- 
+
 So, what if this is not enough for you? Well, for a more fine grained control
-you may edit the /etc/proftpd.conf file. If the simplefeatures webserver is
-installed and enabled, the plugin config page will provide the ability to edit
-the proftpd.conf file. If not, you'll have to edit it in shell directly.
+you may edit the /etc/proftpd.conf file. If you have a webserver with php
+installed and enabled, please point the plugin to its port and webroot.
+The plugin config page will then provide you with an editor for the proftpd.conf
+file. If not, you'll have to edit it in shell directly.
+
 By adding directory entries you'll have a powerful weapon to fulfill your needs.
 Have a look at:
 http://www.proftpd.org/docs/howto/Directory.html
@@ -324,6 +328,9 @@ Title="&plugin;"
 <INLINE>
 # proftpd configuration
 SERVICE="disable"
+WEBSRV="disable"
+WPATH=""
+WPORT=""
 </INLINE>
 </FILE>
 
@@ -331,7 +338,6 @@ SERVICE="disable"
 <INLINE>
 &lt;?PHP
   $proftpd_cfg = parse_ini_file( "&plg;/proftpd.cfg" );
-  $websrv_cfg = @parse_ini_file( "/boot/config/simpleFeatures/simpleFeatures.web.server.cfg" );
   $proftpd_running = file_exists( "&pid;") ? "yes" : "no";
   $proftpd_localplg = shell_exec("/etc/rc.d/rc.proftpd getver plg local");
   $proftpd_remoteplg = shell_exec("/etc/rc.d/rc.proftpd getver plg remote");
@@ -467,7 +473,7 @@ SERVICE="disable"
   <div id="title">
     <span class="left">Configuration:&#32;<img src='/plugins/images/new_config.png'></span>
   </div>
-  <form name="proftpd_settings" method="POST" action="/update.htm" target="progressFrame">
+  <form name="proftpd_settings" method="POST" action="/update.htm" target="progressFrame" onsubmit="validateForm();">
     <input type="hidden" name="cmd" value="/etc/rc.d/rc.proftpd">
     <table class="settings">
       <tr>
@@ -479,6 +485,23 @@ SERVICE="disable"
           </select>
         </td>
       </tr>
+      <tr>
+        <td>Webserver available:</td>
+        <td>
+          <select name="arg2" size="1" onchange="checkENABLED(document.proftpd_settings);">
+            <?=mk_option($proftpd_cfg['WEBSRV'], "disable", "No");?>
+            <?=mk_option($proftpd_cfg['WEBSRV'], "enable", "Yes");?>
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <td>Webroot:</td>
+        <td><input type="text" name="arg3" id="arg3" maxlength="60" value="<?=$proftpd_cfg['WPATH'];?>"></td>
+      </tr>
+      <tr>
+        <td>Port:</td>
+        <td><input type="text" name="arg4" id="arg4" maxlength="60" value="<?=$proftpd_cfg['WPORT'];?>"></td>
+      </tr>
     </table>
     <div align="center">
       <hr size="3" align="center" width="75%" color="grey" style="margin-top:20px;margin-bottom:18px" >
@@ -488,7 +511,7 @@ SERVICE="disable"
   </form>
   <br />
 </div>
-<?if ($websrv_cfg['service']=="1"):?>
+<?if ($proftpd_cfg['WEBSRV']=="enable"):?>
   <div id="title">
     <span class="left">Edit proftpd.conf:&#32;<img src='/plugins/images/new_config.png'></span>
     <span style="float: right; padding-right:15px;">
@@ -496,8 +519,8 @@ SERVICE="disable"
     </span>
   </div>
   <div style="padding-left:5px; padding-right:15px;">
-    <iframe src="http://<?=$var['NAME'];?>:<?php 
-      echo $websrv_cfg['port']?>/proftpd/proftpdce.php" width="100%"
+    <iframe src="http://<?=$var['NAME'];?>:<?php
+      echo $proftpd_cfg['WPORT']?>/proftpd/proftpdce.php" width="100%"
       height="420" name="ProFTPDConfig">
       <p>IFrame not supported.</p>
     </iframe>
@@ -507,6 +530,25 @@ SERVICE="disable"
     <span></span>
   </div>
 <?endif;?>
+<script type="text/javascript">
+  function validateForm() {
+    document.getElementById('arg2').disabled = false;
+    document.getElementById('arg3').disabled = false;
+    document.getElementById('arg4').disabled = false;
+  }
+
+  function checkENABLED(form) {
+    if (form.arg2.options[0].selected == true) {
+      form.arg3.disabled = true;
+      form.arg4.disabled = true;
+    } else {
+      form.arg3.disabled = false;
+      form.arg4.disabled = false;
+    }
+  }
+
+  checkENABLED(document.proftpd_settings);
+</script>
 ]]>
 </INLINE>
 </FILE>
@@ -522,6 +564,42 @@ PIDFILE=&pid;
 CONFIG=&plg;/proftpd.cfg
 # read our configuration
 source $CONFIG
+
+write_config()
+{
+  echo "# proftpd configuration" > &plg;/proftpd.cfg
+  echo "SERVICE=\"$SERVICE\"" >> &plg;/proftpd.cfg
+  echo "WEBSRV=\"$WEBSRV\"" >> &plg;/proftpd.cfg
+  echo "WPATH=\"$WPATH\"" >> &plg;/proftpd.cfg
+  echo "WPORT=\"$WPORT\"" >> &plg;/proftpd.cfg
+}
+
+proftpd_enable()
+{
+  echo "Applying Settings ($1) ..."
+  sleep 2
+  SERVICE="$1" #enable
+  WEBSRV="$2"
+  if [ "$3" != "" ]; then WPATH="$3"; fi
+  if [ "$4" != "" ]; then WPORT="$4"; fi
+  write_config
+  echo "... OK"
+  proftpd_start
+  sleep 1
+}
+
+proftpd_disable()
+{
+  echo "Applying Settings ($1) ..."
+  SERVICE="$1" #disable
+  WEBSRV="$2"
+  if [ "$3" != "" ]; then WPATH="$3"; fi
+  if [ "$4" != "" ]; then WPORT="$4"; fi
+  write_config
+  echo "... OK"
+  sleep 1
+  proftpd_stop
+}
 
 function userjail()
 {
@@ -551,17 +629,14 @@ function userjail()
 
 function proftpdce_install()
 {
-  # check if webserver is installed and enabled 
-  if [ -e "&wsc;" ]; then
-    source &wsc;
-    if [ $service == "1" ]; then
-      # check if config editor is already installed
-      if [ ! -d $path/proftpd ]; then
-        mkdir $path/proftpd/
-        echo "installing proftpd config editor..."
-        unzip -o &plg;/proftpdce.zip -d $path/proftpd/
-        /usr/local/sbin/newperms $path/proftpd >/dev/null
-      fi
+  # check if webserver support enabled
+  if [ "$websrv" == "enabled" ]; then
+    # check if config editor is already installed
+    if [ ! -d $wpath/proftpd ]; then
+      mkdir $wpath/proftpd/
+      echo "installing proftpd config editor..."
+      unzip -o &plg;/proftpdce.zip -d $wpath/proftpd/
+      /usr/local/sbin/newperms $wpath/proftpd >/dev/null
     fi
   fi
 }
@@ -753,14 +828,10 @@ fi
 
 case $1 in
 
-  install)
-    proftpd_install
-    ;;
-
   start)
     proftpd_start
     ;;
-  
+
   buttonstart)
     SERVICE=enable
     proftpd_start
@@ -789,25 +860,13 @@ case $1 in
       exit -1
     fi
     ;;
-    
+
   enable)
-    SERVICE=enable
-    if [ -f $CONFIG ]; then
-      sed -i "s/"disable"/"enable/"" $CONFIG	
-    fi
-    echo "ProFTPD unRAID service enabled"
-    sleep 1
-    proftpd_start
+    proftpd_enable $1 $2 $3 $4
     ;;
 
   disable)
-    SERVICE=disable
-    if [ -f $CONFIG ]; then
-      sed -i "s/"enable"/"disable/"" $CONFIG	
-    fi
-    echo "ProFTPD unRAID service disabled"
-    sleep 1
-    proftpd_stop
+    proftpd_disable $1 $2 $3 $4
     ;;
 
   updateplg)
@@ -823,7 +882,7 @@ case $1 in
     ;;
 
   *)
-    echo "usage: $0 {install|start|buttonstart|stop|restart|enable|disable|updateplg|updateapp|getver}"
+    echo "usage: $0 {start|buttonstart|stop|restart|enable|disable|updateplg|updateapp|getver}"
     exit 1
     ;;
 
@@ -911,9 +970,9 @@ if [[ ! -e &plg;/$PKG ]] || [[ ! -e &plg;/$PKGSQL ]]; then
   mv -f /tmp/$PKG &plg;
   mv -f /tmp/$PKGSQL &plg;
   mv -f /tmp/appver.txt &plg;
-else  
+else
   echo "Found up to date local versions of proftpd packages..."
-fi  
+fi
 #install proftpd package with sql-modules
 if [ -d "/usr/lib/mysql" ]; then
   echo "SQL found. Installing proftpd with SQL support..."

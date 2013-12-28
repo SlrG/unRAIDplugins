@@ -5,8 +5,8 @@ their feature rich ftp server and the icon I used for this plugin.
 
 Further thanks go to overbyrn. This Plugin uses a lot of his code he did for
 his nzbget plugin. Please check it out, it is really great! Also to Benni-Chan,
-Influencer, prostuff1 and speeding_ant for their great plugins. Studying their
-code was what made this plugin possible.
+Influencer, prostuff1, speeding_ant and bonienl for their great plugins.
+Studying their code was what made this plugin possible.
                              **************
 
 HOWTO:
@@ -45,11 +45,13 @@ user3 will have access to dir_a and subdirectories but not to /mnt/cache/FTP or
       dir_b
 user4 will have access to dir_b and subdirectories but not to /mnt/cache/FTP or
       dir_a
- 
+
 So, what if this is not enough for you? Well, for a more fine grained control
-you may edit the /etc/proftpd.conf file. If the simplefeatures webserver is
-installed and enabled, the plugin config page will provide the ability to edit
-the proftpd.conf file. If not, you'll have to edit it in shell directly.
+you may edit the /etc/proftpd.conf file. If you have a webserver with php
+installed and enabled, please point the plugin to its port and webroot.
+The plugin config page will then provide you with an editor for the proftpd.conf
+file. If not, you'll have to edit it in shell directly.
+
 By adding directory entries you'll have a powerful weapon to fulfill your needs.
 Have a look at:
 http://www.proftpd.org/docs/howto/Directory.html
