@@ -1,0 +1,1000 @@
+<?xml version='1.0' standalone='yes'?>
+
+<!DOCTYPE PLUGIN [
+<!ENTITY plugin "ProFTPD">
+<!ENTITY author "SlrG">
+<!ENTITY plgver "0.5i">
+<!ENTITY pkg "/boot/packages">
+<!ENTITY pld "/boot/config/plugins/">
+<!ENTITY plg "/boot/config/plugins/proftpd">
+<!ENTITY pid "/var/run/proftpd.pid">
+<!ENTITY img "/usr/local/emhttp/plugins/images">
+<!ENTITY gui "/usr/local/emhttp/plugins/proftpd">
+<!ENTITY ghm "https://github.com/SlrG/unRAIDplugins/raw/master/proftpd_v6">
+<!ENTITY dsv "http://www.sdevel.de/proftpd_v6">
+]>
+
+<PLUGIN>
+<!--
+Copyright 2013, SlrG
+ProFTP Daemon Plugin for unRAID
+
+Version history:
+ 2013-02-01 - version 0.1  : First release
+ 2013-02-02 - version 0.1a : Enable download of iconfiles if not yet present. (Thanks overbyrn!)
+ 2013-02-08 - version 0.2  : Check if sql is installed and choose proftpd package accordingly.
+ 2013-03-23 - version 0.3  : Provide config editor in iframe if simplefeatures webserver is available.
+ 2013-03-29 - version 0.4  : Update functionality for plugin (Thanks overbyrn!).
+ 2013-04-04 - version 0.5  : Added syntax checking and line numbering to config file editor.
+ 2013-05-23 - version 0.5a : Fixed stupid bug that blocked the downloading of files from the github repo. (Thanks saary!)
+ 2013-05-23 - version 0.5b : Disable FTP Server icon of unRAIDs internal ftp server. (Thanks saary!)
+ 2013-05-23 - version 0.5c : Change of wordings.
+ 2013-05-27 - version 0.5d : Fixed error message when no SimpleFeatures webserver is installed.
+ 2013-05-28 - version 0.5e : Fixed openssl dependency.
+ 2013-05-28 - version 0.5f : Move binary files from github to personal webspace and change version check.
+ 2013-07-17 - version 0.5g : Fixed problem that slashes were removed from proftpd.conf on save and removed unnecessary sudo commands. (Thanks Necrotic!)
+ 2013-11-08 - version 0.5h : Downgraded openssl to 0.9.8n because 1.0.1c was creating problems with other plugins using the older version. (Thanks Madhouse!)
+ 2013-11-13 - version 0.5i : Fixed refresh of control panel plugin by adding sudo -u root to restart of inetd.
+ 2013-11-13 - version 0.5j : Added scripts to mount directories on array start and unmount them on array stop.
+ 2013-12-28 - version 0.5k : Removed SimpleFeatures recognition and added manual webserver configuration.
+ 2013-12-28 - version 0.5i : Removed openssl to make the plugin v6b6 compatible.
+
+Plugin file locations:
+ /boot/config/plugins/proftpd_v6.plg                                  # this file
+ /tmp/plugin-prepare                                                  # plugin prepare script
+ /tmp/prpftpd-cleanup                                                 # plugin cleanup script
+
+ /boot/config/plugins/proftpd/README                                  # README file
+
+ /boot/config/plugins/proftpd/appver.txt                              # appversion file
+ /boot/config/plugins/proftpd/device_status.png                       # icon file
+ /boot/config/plugins/proftpd/mountscript.sh                          # script to mount directories on array start
+ /boot/config/plugins/proftpd/new_config.png                          # icon file
+ /boot/config/plugins/proftpd/proftpd_v6-x.x.x-sql.tgz                # selfbuilt proftpd package with many additional modules
+ /boot/config/plugins/proftpd/proftpd_v6-x.x.x.tgz                    # additional modules but no sql support
+ /boot/config/plugins/proftpd/proftpd.conf                            # proftpd config file
+ /boot/config/plugins/proftpd/proftpd.png                             # icon file
+ /boot/config/plugins/proftpd/proftpd.cfg                             # plugin page config file
+ /boot/config/plugins/proftpd/proftpdce.zip                           # proftpd config editor files
+ /boot/config/plugins/proftpd/unmountscript.sh                        # script to unmount directories on array stop
+
+ $Webroot/proftpd/                                                    # proftpd config editor files
+
+ /usr/local/emhttp/plugins/images/device_status.png                   # plugin page icon file
+ /usr/local/emhttp/plugins/images/new_config.png                      # plugin page icon file
+
+ /usr/local/emhttp/plugins/proftpd/proftpd.png                        # plugin page icon file
+ /usr/local/emhttp/plugins/proftpd/proftpd.page                       # plugin page file
+ /usr/local/emhttp/plugins/proftpd/proftpd.php                        # plugin page file
+ /usr/local/emhttp/plugins/proftpd/event/disks_mounted                # event handler will start proftpd
+ /usr/local/emhttp/plugins/proftpd/event/unmounting_disks             # event handler will stop proftpd
+
+ /etc/rc.d/rc.proftpd                                                 # proftpd startup script
+ /var/log/plugins/proftpd                                             # record of previous plugin installation
+ /tmp/proftpd-install                                                 # plugin installation script
+-->
+
+<FILE Name="/tmp/plugin-prepare" Run="/bin/bash">
+<INLINE>
+#!/bin/bash
+echo ""
+echo ""
+echo "*************************************************************"
+echo "* &plugin; plugin installation started..."
+echo "*************************************************************"
+echo ""
+
+# Wait until network is ready
+timer=30
+while [ $timer -gt 0 ]; do
+  gateway=$(route -n | awk '/^0.0.0.0/ {print $2}')
+  if [ -n "$gateway" ] &amp;&amp; [ $(ping -q -n -c 1 $gateway | awk -F, '/received/ {print $2}' | awk '{print $1}') -eq 1 ]; then
+    break
+  fi
+  timer=$((timer-1))
+  sleep 1
+done
+if [ $timer -eq 0 ]; then
+  echo "No network communication !!!"
+fi
+# Remove this script
+rm -f /tmp/plugin-prepare
+</INLINE>
+</FILE>
+
+<FILE Name="/tmp/plugin-cleanup" Run="/bin/bash">
+<INLINE>
+# delete file but don't warn if file does not exist
+rmNoWarn() {
+  test -e $1 &amp;&amp; rm $1 2>/dev/null
+}
+
+# delete directory but don't warn if directory does not exist
+rmRecursiveNoWarn() {
+  test -e $1 &amp;&amp; rm -r $1 2>/dev/null
+}
+
+#Selfremoval commands to force the redownload/recreation of updated files
+echo
+echo "Executing selfremoval commands if present..."
+
+#One-time remove of legacy packages from previous proftpd plugin versions
+rmNoWarn &plg;/proftpdce.php                             # file is now part of proftpdce.zip
+
+#Remove currently installed plugin files
+rmNoWarn /etc/rc.d/rc.proftpd                            # control script
+rmNoWarn &pid;                                           # stale pid file
+rmRecursiveNoWarn /usr/local/emhttp/plugins/proftpd      # proftpd unraid webgui integration files
+rmNoWarn /var/log/plugins/proftpd                        # record of previous plugin installation
+
+rm /tmp/plugin-cleanup
+</INLINE>
+</FILE>
+
+<FILE Name="/boot/config/plugins/proftpd/README">
+<INLINE>
+                                Credits:
+                             **************
+Great thanks go to Limetech for giving us unRAID. To the ProFTPD project for
+their feature rich ftp server and the icon I used for this plugin.
+
+Further thanks go to overbyrn. This Plugin uses a lot of his code he did for
+his nzbget plugin. Please check it out, it is really great! Also to Benni-Chan,
+Influencer, prostuff1, speeding_ant and bonienl for their great plugins.
+Studying their code was what made this plugin possible.
+                             **************
+
+HOWTO:
+I wanted to keep this plugin as simple as possible. So there is no fancy
+user- or servermanagement. The plugin provides you with the ability to
+define ftp-only users and assign them their own home directory, which they
+won't be able to leave. Of course it is possible to assign the same directory
+to more than one user.
+
+So, how do you do it? You open the unRAID user management and choose add user.
+Then you choose username and password like you usually would. The
+difference is in the description field, what I guess you would normally
+leave empty. Into this field you put "ftpuser /path/to/homedir/of/user"
+without the quotes and save. Then please restart the proftp daemon.
+
+The daemon start script will now scan all users. Every user without the
+"ftpuser" keyword in the description field will be put into an ftpusers file.
+This files contains users who are not allowed to access the ftp server. I know
+this is a somewhat strange logic. :) Then the path to the user directory given
+in the description will be extracted and put into the root field of the user
+file. unRAID doesn't expose this field on its users page and normally fills it
+with / which would give all users access to all files on your server. 
+
+You are now able to do something like:
+user
+user1 ftpuser
+user2 ftpuser /mnt/cache/FTP
+user3 ftpuser /mnt/cache/FTP/dir_a
+user4 ftpuser /mnt/cache/FTP/dir_b
+
+user  will not be able to login via ftp
+user1 will have full access to /
+user2 will have access to all files in /mnt/cache/FTP so he will be able to
+      access the files in dir_a and dir_b, too.
+user3 will have access to dir_a and subdirectories but not to /mnt/cache/FTP or
+      dir_b
+user4 will have access to dir_b and subdirectories but not to /mnt/cache/FTP or
+      dir_a
+
+So, what if this is not enough for you? Well, for a more fine grained control
+you may edit the /etc/proftpd.conf file. If you have a webserver with php
+installed and enabled, please point the plugin to its port and webroot.
+The plugin config page will then provide you with an editor for the proftpd.conf
+file. If not, you'll have to edit it in shell directly.
+
+By adding directory entries you'll have a powerful weapon to fulfill your needs.
+Have a look at:
+http://www.proftpd.org/docs/howto/Directory.html
+for further explanation.
+
+Bans, quotas, sftp, tls, sql users* and more may be possible. The proftpd
+included in my plugin was compiled with the following modules:
+  mod_auth.c          mod_quotatab.c
+  mod_auth_file.c     mod_quotatab_file.c
+  mod_auth_unix.c     mod_quotatab_sql.c*
+  mod_ban.c           mod_readme.c
+  mod_cap.c           mod_rewrite.c
+  mod_core.c          mod_sftp.c
+  mod_ctrls.c         mod_sftp_sql.c*
+  mod_ctrls_admin.c   mod_site.c
+  mod_delay.c         mod_sql.c*
+  mod_facts.c         mod_sql_mysql.c*
+  mod_ident.c         mod_sql_passwd.c*
+  mod_log.c           mod_tls.c
+  mod_ls.c            mod_xfer.c
+
+* only if sql package is installed
+
+In the future it may be possible to get php and sql based user and server
+management tools to work. Feel free to try and please report and share your
+findings.
+
+SlrG
+</INLINE>
+</FILE>
+
+<FILE Name="&plg;/device_status.png">
+<URL>-q --no-check-certificate &dsv;/device_status.png</URL>
+</FILE>
+
+<FILE Name="&img;/device_status.png">
+<LOCAL>&plg;/device_status.png</LOCAL>
+</FILE>
+
+<FILE Name="&plg;/new_config.png">
+<URL>-q --no-check-certificate &dsv;/new_config.png</URL>
+</FILE>
+
+<FILE Name="&img;/new_config.png">
+<LOCAL>&plg;/new_config.png</LOCAL>
+</FILE>
+
+<FILE Name="&plg;/proftpd.conf">
+<INLINE>
+# Server Settings
+ServerName              ProFTPD
+ServerType              standalone
+DefaultServer           on
+PidFile                 &pid;
+
+# Port 21 is the standard FTP port. You propably should not connect to the
+# internet with this port. Make your router forward another port to
+# this one instead.
+Port                    21
+
+# Set the user and group under which the server will run.
+User                    nobody
+Group                   users
+
+# Prevent DoS attacks
+MaxInstances            30
+
+# Speedup Login
+UseReverseDNS           off
+IdentLookups            off 
+
+# Control Logging - comment and uncomment as needed
+# If logging Directory is world writeable the server won't start!
+# If no SystemLog is defined proftpd will log to servers syslog.
+#SystemLog               NONE           
+#SystemLog               &plg;/slog
+TransferLog             NONE
+#TransferLog             &plg;/xferlog
+WtmpLog                 NONE
+
+# As a security precaution prevent root and other users in
+# /etc/ftpuser from accessing the FTP server.
+UseFtpUsers             on
+RootLogin               off
+
+# Umask 022 is a good standard umask to prevent new dirs and files
+# from being group and world writable.
+Umask 022
+
+# "Jail" FTP-Users into their home directory. (chroot)
+# The root directory has to be set in the description field
+# when defining an user:
+# ftpuser /mnt/cache/FTP
+# See README for more information.
+DefaultRoot ~
+
+# Shell has to be set when defining an user. As a security precaution
+# it is set to "/bin/false" as FTP-Users should not have shell access.
+# This setting makes proftpd accept invalid shells.
+RequireValidShell       no
+
+# Normally, we want files to be overwriteable.
+AllowOverwrite          on
+</INLINE>
+</FILE>
+
+<FILE Name="&plg;/proftpd.png">
+<URL>-q --no-check-certificate &dsv;/proftpd.png</URL>
+</FILE>
+
+<FILE Name="&gui;/proftpd.png">
+<LOCAL>&plg;/proftpd.png</LOCAL>
+</FILE>
+
+<FILE Name="&gui;/proftpd.page">
+<INLINE>
+Menu="NetworkServices"
+Icon="proftpd.png"
+Version="&plgver;"
+Author="&author;"
+Type="php"
+Title="&plugin;"
+</INLINE>
+</FILE>
+
+<FILE Name="&plg;/proftpd.cfg">
+<INLINE>
+# proftpd configuration
+SERVICE="disable"
+WEBSRV="disable"
+WPATH=""
+WPORT=""
+</INLINE>
+</FILE>
+
+<FILE Name="&gui;/proftpd.php">
+<INLINE>
+&lt;?PHP
+  $proftpd_cfg = parse_ini_file( "&plg;/proftpd.cfg" );
+  $proftpd_running = file_exists( "&pid;") ? "yes" : "no";
+  $proftpd_localplg = shell_exec("/etc/rc.d/rc.proftpd getver plg local");
+  $proftpd_remoteplg = shell_exec("/etc/rc.d/rc.proftpd getver plg remote");
+  $proftpd_localapp = shell_exec("/etc/rc.d/rc.proftpd getver app local");
+  $proftpd_remoteapp = shell_exec("/etc/rc.d/rc.proftpd getver app remote");
+  $updateplg = '&plg;/updateplg';
+  $updates_exist = "false";
+<![CDATA[
+?>
+<div style="width: 49%; float:left">
+  <div id="title">
+    <span class="left">Status:&#32;<img src='/plugins/images/device_status.png'>
+      <?if ($proftpd_running=="yes"):?>
+        <span style="color:#6FA239"><b>RUNNING</b></span></a>
+      <?else:?>
+        <span style="color:#CC3300"><b>STOPPED</b></span>
+      <?endif;?>
+    </span>
+  </div>
+  <?if ($proftpd_running=="yes"):?>
+    <div style="position:relative;float:left;width:50%;text-align:right; margin-bottom:24px">
+      <form name="proftpd_start_stop" method="POST" action="/update.htm" target="progressFrame">
+        <input type="hidden" name="cmd" value="/etc/rc.d/rc.proftpd stop">
+        <input type="submit" name="runCmd" value="Stop">
+      </form>
+    </div>
+    <div style="position:relative;float:left;width:50%;margin-bottom:24px">
+      <form name="proftpd_restart" method="POST" action="/update.htm" target="progressFrame">
+        <input type="hidden" name="cmd" value="/etc/rc.d/rc.proftpd restart">
+        <input type="submit" name="runCmd" value="Restart">
+      </form>
+    </div>
+  <?else:?>
+    <div style="position:relative;float:left;width:100%;text-align:center;margin-bottom:24px">
+      <form name="proftpd_start" method="POST" action="/update.htm" target="progressFrame">
+        <input type="hidden" name="cmd" value="/etc/rc.d/rc.proftpd buttonstart">
+        <input type="submit" name="runCmd" value="Start">
+      </form>
+    </div>
+  <?endif;?>
+  <div style="position:relative;float:left;width:100%;text-align:center;margin-top:24px;margin-bottom:24px">
+    <table>
+      <tr style="font-weight:bold; color:#333333; background:#F0F0F0; text-shadow:0 1px 1px #FFFFFF;">
+        <td  style="text-align:left;padding-left:12px;">Package/Plugin</td>
+        <td>Local Version</td>
+        <td>Online Version</td>
+      </tr>
+      <tr style="font-weight:bold; background:#FFFFFF;">
+        <td style="text-align:left;padding-left:12px;">ProFTPD Package</td>
+        <td>
+          <?if ($proftpd_localapp == "Unknown"):?>
+            <span style="color:#CC3300">UNKNOWN</span>
+          <?else:?>
+            <?if ($proftpd_localapp != $proftpd_remoteapp):?>
+              <span style="color:#CC3300">v<?=$proftpd_localapp?></span>
+            <?else:?>
+              <span style="color:#6FA239">v<?=$proftpd_localapp?></span>
+            <?endif;?>
+          <?endif;?>
+        </td>
+        <td>
+          <?if ($proftpd_remoteapp != "Unknown"):?>
+            <span style="color:#6FA239">v<?=$proftpd_remoteapp?></span>
+          <?else:?>
+            <span style="color:#CC3300">UNKNOWN</span>
+          <?endif;?>
+        </td>
+      </tr>
+      <tr style="font-weight:bold; background:#FFFFFF;">
+        <td style="text-align:left;padding-left:12px;">ProFTPD Plugin</td>
+        <td>
+          <?if ($proftpd_localplg == "Unknown"):?>
+            <span style="color:#CC3300">UNKNOWN</span>
+          <?else:?>
+            <?if ($proftpd_localplg != $proftpd_remoteplg):?>
+              <span style="color:#CC3300">v<?=$proftpd_localplg?></span>
+            <?else:?>
+              <span style="color:#6FA239">v<?=$proftpd_localplg?></span>
+            <?endif;?>
+          <?endif;?>
+        </td>
+        <td>
+          <?if ($proftpd_remoteplg != "Unknown"):?>
+              <span style="color:#6FA239">v<?=$proftpd_remoteplg?></span>
+          <?else:?>
+            <span style="color:#CC3300">UNKNOWN</span>
+          <?endif;?>
+        </td>
+      </tr>
+    </table>
+  </div>
+  <br />
+  <div style="position:relative;float:left;width:100%;margin-top:24px;margin-bottom:24px">
+    <table>
+      <tr style="font-weight:bold; color:#333333; background:#F0F0F0; text-shadow:0 1px 1px #FFFFFF;">
+        <td style="padding-left:12px;" colspan="2">Updates</td>
+      </tr>
+      <?if (($proftpd_remoteplg != $proftpd_localplg) && ($proftpd_localplg != "Unknown") && ($proftpd_remoteplg != "Unknown")): ?>
+        <tr>
+        <td style="padding-left:12px;"width="30%">
+          <form name="proftpd_updateplg" method="POST" action="/update.htm" target="progressFrame">
+            <input type="hidden" name="cmd" value="/etc/rc.d/rc.proftpd updateplg">
+            <input type="submit" name="runCmd" value="Update Plugin">
+          </form>
+        </td>
+          <td>An update is available to the plugin</td>
+        </tr>
+        <?$updates_exist="true"?>
+      <?endif;?>
+
+      <?if (($proftpd_remoteapp != $proftpd_localapp) && ($proftpd_localapp != "Unknown") && ($proftpd_remoteapp != "Unknown")): ?>
+        <tr>
+          <td style="padding-left:12px;"width="30%">
+          <form name="proftpd_updateapp" method="POST" action="/update.htm" target="progressFrame">
+            <input type="hidden" name="cmd" value="/etc/rc.d/rc.proftpd updateapp">
+            <input type="submit" name="runCmd" value="Update ProFTPD">
+          </form>
+          </td>
+          <td>An update is available to ProFTPD</td>
+        </tr>
+        <?$updates_exist="true"?>
+      <?endif;?>
+
+      <?if ($updates_exist=="false"):?>
+        <tr>
+          <td colspan="2" align="center">No updates available at this time</td>
+        </tr>
+      <?endif;?>
+    </table>
+  </div>
+</div>
+<div style="width: 49%; float:right">
+  <div id="title">
+    <span class="left">Configuration:&#32;<img src='/plugins/images/new_config.png'></span>
+  </div>
+  <form name="proftpd_settings" method="POST" action="/update.htm" target="progressFrame" onsubmit="validateForm();">
+    <input type="hidden" name="cmd" value="/etc/rc.d/rc.proftpd">
+    <table class="settings">
+      <tr>
+        <td>Enable ProFTP Daemon:</td>
+        <td>
+          <select name="arg1" size="1">
+            <?=mk_option($proftpd_cfg['SERVICE'], "disable", "No");?>
+            <?=mk_option($proftpd_cfg['SERVICE'], "enable", "Yes");?>
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <td>Webserver available:</td>
+        <td>
+          <select name="arg2" size="1" onchange="checkENABLED(document.proftpd_settings);">
+            <?=mk_option($proftpd_cfg['WEBSRV'], "disable", "No");?>
+            <?=mk_option($proftpd_cfg['WEBSRV'], "enable", "Yes");?>
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <td>Webroot:</td>
+        <td><input type="text" name="arg3" id="arg3" maxlength="60" value="<?=$proftpd_cfg['WPATH'];?>"></td>
+      </tr>
+      <tr>
+        <td>Port:</td>
+        <td><input type="text" name="arg4" id="arg4" maxlength="60" value="<?=$proftpd_cfg['WPORT'];?>"></td>
+      </tr>
+    </table>
+    <div align="center">
+      <hr size="3" align="center" width="75%" color="grey" style="margin-top:20px;margin-bottom:18px" >
+      <input type="submit" name="runCmd" value="Apply" style="margin-bottom:35px">
+      <button type="button" style="margin-bottom:35px" onClick="done();">Done</button>
+    </div>
+  </form>
+  <br />
+</div>
+<?if ($proftpd_cfg['WEBSRV']=="enable"):?>
+  <div id="title">
+    <span class="left">Edit proftpd.conf:&#32;<img src='/plugins/images/new_config.png'></span>
+    <span style="float: right; padding-right:15px;">
+      <a href="http://www.proftpd.org/docs/howto/" target="_blank">ProFTPD mini-HOWTOs</a>
+    </span>
+  </div>
+  <div style="padding-left:5px; padding-right:15px;">
+    <iframe src="http://<?=$var['NAME'];?>:<?php
+      echo $proftpd_cfg['WPORT']?>/proftpd/proftpdce.php" width="100%"
+      height="420" name="ProFTPDConfig">
+      <p>IFrame not supported.</p>
+    </iframe>
+  </div>
+<?else:?>
+  <div style="position:relative;float:left;width:100%;text-align:right; margin-bottom:24px">
+    <span></span>
+  </div>
+<?endif;?>
+<script type="text/javascript">
+  function validateForm() {
+    document.getElementById('arg2').disabled = false;
+    document.getElementById('arg3').disabled = false;
+    document.getElementById('arg4').disabled = false;
+  }
+
+  function checkENABLED(form) {
+    if (form.arg2.options[0].selected == true) {
+      form.arg3.disabled = true;
+      form.arg4.disabled = true;
+    } else {
+      form.arg3.disabled = false;
+      form.arg4.disabled = false;
+    }
+  }
+
+  checkENABLED(document.proftpd_settings);
+</script>
+]]>
+</INLINE>
+</FILE>
+
+<FILE Name="/etc/rc.d/rc.proftpd"  Mode="0770">
+<INLINE>
+#!/bin/bash
+
+# ProFTPD files
+FTPD_BIN=/usr/local/sbin/proftpd
+FTPD_CFG=/etc/proftpd.conf
+PIDFILE=&pid;
+CONFIG=&plg;/proftpd.cfg
+# read our configuration
+source $CONFIG
+
+write_config()
+{
+  echo "# proftpd configuration" > &plg;/proftpd.cfg
+  echo "SERVICE=\"$SERVICE\"" >> &plg;/proftpd.cfg
+  echo "WEBSRV=\"$WEBSRV\"" >> &plg;/proftpd.cfg
+  echo "WPATH=\"$WPATH\"" >> &plg;/proftpd.cfg
+  echo "WPORT=\"$WPORT\"" >> &plg;/proftpd.cfg
+}
+
+proftpd_enable()
+{
+  echo "Applying Settings ($1) ..."
+  sleep 2
+  SERVICE="$1" #enable
+  WEBSRV="$2"
+  if [ "$3" != "" ]; then WPATH="$3"; fi
+  if [ "$4" != "" ]; then WPORT="$4"; fi
+  write_config
+  echo "... OK"
+  proftpd_start
+  sleep 1
+}
+
+proftpd_disable()
+{
+  echo "Applying Settings ($1) ..."
+  SERVICE="$1" #disable
+  WEBSRV="$2"
+  if [ "$3" != "" ]; then WPATH="$3"; fi
+  if [ "$4" != "" ]; then WPORT="$4"; fi
+  write_config
+  echo "... OK"
+  sleep 1
+  proftpd_stop
+}
+
+function userjail()
+{
+  touch /etc/passwdtmp
+  echo "# Users listed in /etc/ftpusers are not allowed to login via FTP!" > /etc/ftpusers
+  OLDIFS=$IFS
+  while IFS=':' read user pass uid gid full home shell
+  do
+    if [[ "$full" == *ftpuser* ]];
+    then
+      # extract homedir from description and put it into correct place
+      nhome=${full:8}
+      if [ -n "$nhome" ]
+      then
+        home="$nhome"
+      fi
+      echo "$user:$pass:$uid:$gid:$full:$home:$shell" >> /etc/passwdtmp
+    else
+      # add non ftp users to /etc/ftpusers file
+      echo "$user:$pass:$uid:$gid:$full:$home:$shell" >> /etc/passwdtmp
+      echo "$user" >> /etc/ftpusers
+    fi
+  done &lt; /etc/passwd
+  mv /etc/passwdtmp /etc/passwd
+  IFS=$OLDIFS
+}
+
+function proftpdce_install()
+{
+  # check if webserver support enabled
+  if [ "$websrv" == "enabled" ]; then
+    # check if config editor is already installed
+    if [ ! -d $wpath/proftpd ]; then
+      mkdir $wpath/proftpd/
+      echo "installing proftpd config editor..."
+      unzip -o &plg;/proftpdce.zip -d $wpath/proftpd/
+      /usr/local/sbin/newperms $wpath/proftpd >/dev/null
+    fi
+  fi
+}
+
+function proftpd_start ()
+{
+  # install
+  proftpdce_install
+
+  # enable service is disabled
+  if [ $SERVICE != "enable" ]; then
+    echo "Service disabled, aborting start"
+    sleep 1
+    return 0
+  fi
+
+  if [ -n "$pid" ]; then
+    echo "ProFTPD [PID $pid] already running"
+    sleep 1
+    return 1
+  fi
+
+  if [ -r $FTPD_CONF ]; then
+    killall proftpd 2> /dev/null
+    echo "Renewing userjail..."
+    sleep 1
+    userjail
+    echo "...OK"
+    sleep 1
+    echo "Starting ProFTPD..."
+    sleep 1
+    sudo -u root $FTPD_BIN -c $FTPD_CFG &amp;> /dev/null
+    echo "...OK"
+    sleep 1
+    return 0
+  else
+    echo "Cannot start ProFTPD -- $FTPD_CONF missing"
+    sleep 1
+    return 1
+  fi
+}
+
+function proftpd_stop()
+{
+  if [ -n "$pid" ]; then
+    echo "Stopping ProFTPD..."
+    sleep 1
+    killall proftpd 2> /dev/null
+    rm &pid; 2> /dev/null
+    unset pid
+    echo "...OK"
+    sleep 1
+  else
+    killall proftpd 2> /dev/null
+    echo "ProFTPD not running"
+    sleep 1
+    return 1
+  fi
+}
+
+function proftpd_updateplg()
+{
+  if [ -f &pid; ]; then
+    DRUNNING="1"
+    proftpd_stop
+  fi
+  echo "Downloading plugin..."
+  wget -q -P /tmp --no-check-certificate &ghm;/proftpd_v6.plg 2>/dev/null
+  if [ ! -f /tmp/proftpd_v6.plg ]; then
+    echo "Download failed, update aborted!"
+    sleep 2
+  else
+    echo "...OK"
+    sleep 1
+    echo  "Updating plugin..."
+    sleep 1
+    mv -f &pld;/proftpd_v6.plg &pld;/proftpd_v6.plg.sav 2>/dev/null
+    mv -f /tmp/proftpd_v6.plg &pld;/proftpd_v6.plg 2>/dev/null
+    /usr/local/sbin/installplg &pld;/proftpd_v6.plg >/dev/null
+    echo "...OK"
+    sleep 1
+  fi
+  if [ "$DRUNNING" == "1" ]; then
+    proftpd_start
+  fi
+}
+
+function proftpd_updateapp()
+{
+  if [ -n "$pid" ]; then
+    DRUNNING="1"
+    proftpd_stop
+  fi
+  echo "Downloading Update..."
+  APPVER=$(wget --no-check-certificate &dsv;/appver.txt -q -O -)
+  PKG=proftpd_v6-$APPVER.tgz
+  PKGSQL=proftpd_v6-$APPVER-sql.tgz
+  wget -q -P /tmp --no-check-certificate &dsv;/$PKG 2>/dev/null
+  wget -q -P /tmp --no-check-certificate &dsv;/$PKGSQL 2>/dev/null
+  wget -q -P /tmp --no-check-certificate &dsv;/appver.txt 2>/dev/null
+  if [ ! -f /tmp/$PKG ] || [ ! -f /tmp/$PKGSQL ]; then
+    echo "Download failed, update aborted!"
+    sleep 2
+  else
+    echo "...OK"
+    sleep 1
+    echo "Updating Application..."
+    sleep 1
+    LCLPKG=$(basename /var/log/packages/proftpd*).tgz
+    upgradepkg &plg;/$LCLPKG%/tmp/$PKG 2>/dev/null
+    rm -f &plg;/*.tgz 2>/dev/null
+    rm -f &plg;/appver.txt 2>/dev/null
+    mv -f /tmp/$PKG &plg; 2>/dev/null
+    mv -f /tmp/$PKGSQL &plg; 2>/dev/null
+    mv -f /tmp/appver.txt &plg; 2>/dev/null
+    echo "...OK"
+    sleep 1
+  fi
+  if [ "$DRUNNING" == "1" ]; then
+    proftpd_start
+  fi
+}
+
+function proftpd_plgver()
+{
+  case "$1" in
+    'local')
+      if [ -f &pld;/proftpd_v6.plg ]; then
+        VERSION=$(grep "&lt;\!ENTITY plgver" &pld;/proftpd_v6.plg | cut -d\" -f2)
+      else
+        VERSION=Unknown
+    fi
+    ;;
+    'remote')
+      VERSION=$(wget --no-check-certificate &ghm;/proftpd_v6.plg -q -O - | grep "&lt;\!ENTITY plgver" | cut -d\" -f2)
+      if [ "$VERSION" == "" ]; then
+        VERSION=Unknown
+      fi
+    ;;
+  esac
+  echo -n "$VERSION"
+}
+
+function proftpd_appver()
+{
+  case "$1" in
+    'local')
+      VERSION=$(cat &plg;/appver.txt)
+      if [ "$VERSION" == "" ]; then
+        VERSION=Unknown
+      fi
+    ;;
+    'remote')
+      VERSION=$(wget --no-check-certificate &dsv;/appver.txt -q -O - )
+      if [ "$VERSION" == "" ]; then
+        VERSION=Unknown
+      fi
+    ;;
+  esac
+  echo -n "$VERSION"
+}
+
+function proftpd_getver()
+{
+  if [[ ! -z $1 &amp;&amp; ! -z $2 ]]; then
+  case "$1" in
+    'plg')
+      proftpd_plgver $2
+    ;;
+    'app')
+      proftpd_appver $2
+    ;;
+  esac
+  else
+    echo "usage $0 getver plg|app local|remote"
+  fi
+}
+
+# If PIDFILE exists, does it point to a proftpd process?
+
+if [ -f $PIDFILE ]; then
+  pid=`cat $PIDFILE`
+fi
+
+if [ ! -x $FTPD_BIN ]; then
+  echo "$FTPD_BIN: cannot execute"
+  exit 1
+fi
+
+case $1 in
+
+  start)
+    proftpd_start
+    ;;
+
+  buttonstart)
+    SERVICE=enable
+    proftpd_start
+    ;;
+
+  stop)
+    proftpd_stop
+    ;;
+
+  restart)
+    if [ -n "$pid" ]; then
+      echo "Renewing userjail..."
+      sleep 1
+      userjail
+      echo "...OK"
+      sleep 1
+      echo "Restarting ProFTPD..."
+      sleep 1
+      kill -HUP $pid
+      echo "...OK"
+      sleep 1
+      exit 0
+    else
+      echo "ProFTPD not running"
+      sleep 1
+      exit -1
+    fi
+    ;;
+
+  enable)
+    proftpd_enable $1 $2 $3 $4
+    ;;
+
+  disable)
+    proftpd_disable $1 $2 $3 $4
+    ;;
+
+  updateplg)
+    proftpd_updateplg
+    ;;
+
+  updateapp)
+    proftpd_updateapp
+    ;;
+
+  getver)
+    proftpd_getver $2 $3
+    ;;
+
+  *)
+    echo "usage: $0 {start|buttonstart|stop|restart|enable|disable|updateplg|updateapp|getver}"
+    exit 1
+    ;;
+
+esac
+exit 0
+</INLINE>
+</FILE>
+
+<FILE Name="&plg;/mountscript.sh">
+<INLINE>
+#!/bin/bash
+# put your commands for creating mount points and mounting here
+# they will be executed when the array starts
+# e.g.:
+# mkdir /mnt/cache/FTP/movies;mount --bind /mnt/user0/movies /mnt/cache/FTP/movies
+</INLINE>
+</FILE>
+
+<FILE Name="&plg;/unmountscript.sh">
+<INLINE>
+#!/bin/bash
+# put your commands for unmounting and removing mount points here
+# they will be executed when the array stops
+# e.g.:
+# umount /mnt/cache/FTP/movies;rmdir /mnt/cache/FTP/movies
+</INLINE>
+</FILE>
+
+<!-- event handler -->
+<FILE Name="&gui;/event/disks_mounted" Mode="0770">
+<INLINE>
+#!/bin/bash
+&plg;/mountscript.sh
+/etc/rc.d/rc.proftpd start
+</INLINE>
+</FILE>
+
+<!-- event handler -->
+<FILE Name="&gui;/event/unmounting_disks" Mode="0770">
+<INLINE>
+#!/bin/bash
+/etc/rc.d/rc.proftpd stop
+&plg;/unmountscript.sh
+</INLINE>
+</FILE>
+
+<FILE Name="/var/log/plugins/proftpd">
+<INLINE>
+&plugin; v&plgver;
+</INLINE>
+</FILE>
+
+<FILE Name="/tmp/proftpd-install" Run="/bin/bash">
+<INLINE>
+#!/bin/bash
+echo
+echo "Looking for locally saved version of proftpdce..."
+if [[ ! -e &plg;/proftpdce.zip ]]; then
+  echo "Local version does not exist, downloading proftpdce.zip to /tmp"
+  wget -q -P /tmp --no-check-certificate &dsv;/proftpdce.zip 2>/dev/null
+  mv -f /tmp/proftpdce.zip &plg;
+else
+  echo "Found up to date local versions of proftpdce..."
+fi
+# Get (if necessary) and install proftpd packages. This ensures the plugin will 
+# always install the latest available build.
+APPVER=$(wget --no-check-certificate &dsv;/appver.txt -q -O -)
+PKG=proftpd_v6-$APPVER.tgz
+PKGSQL=proftpd_v6-$APPVER-sql.tgz
+echo "Looking for locally saved version of proftpd packages..."
+if [[ ! -e &plg;/$PKG ]] || [[ ! -e &plg;/$PKGSQL ]]; then
+  if [[ ! -e &plg;/$PKG ]]; then
+    echo "Local package does not exist, downloading $PKG to /tmp"
+    wget -q -P /tmp --no-check-certificate &dsv;/$PKG 2>/dev/null
+  fi
+  if [[ ! -e &plg;/$PKGSQL ]]; then
+    echo "Local package does not exist, downloading $PKGSQL to /tmp"
+    wget -q -P /tmp --no-check-certificate &dsv;/$PKGSQL 2>/dev/null
+  fi
+  wget -q -P /tmp --no-check-certificate &dsv;/appver.txt 2>/dev/null
+  echo "Deleting old builds from &plg;..."
+  rm -f &plg;/proftpd_v6-*.tgz
+  rm -f &plg;/appver.txt
+  echo "Moving downloaded versions from /tmp/ to &plg;/..."
+  mv -f /tmp/$PKG &plg;
+  mv -f /tmp/$PKGSQL &plg;
+  mv -f /tmp/appver.txt &plg;
+else
+  echo "Found up to date local versions of proftpd packages..."
+fi
+#install proftpd package with sql-modules
+if [ -d "/usr/lib/mysql" ]; then
+  echo "SQL found. Installing proftpd with SQL support..."
+  upgradepkg --install-new &plg;/$PKGSQL
+else
+  echo "No SQL found. Installing proftpd without SQL support..."
+  upgradepkg --install-new &plg;/$PKG
+fi
+#detect if run on boot
+if [[ -n $(sed -n '/^ftp/p' /etc/inetd.conf) ]]; then
+  echo "Disable builtin FTP-Server..."
+  /bin/sed -i -e "s/^ftp/#ftp/" /etc/inetd.conf
+  echo "Restart inetd to apply change..."
+  /usr/bin/sudo -u root /etc/rc.d/rc.inetd restart
+  echo "Disable icon of builtin FTP-Server..."
+  mv /usr/local/emhttp/plugins/webGui/FTP.page /usr/local/emhttp/plugins/webGui/FTP.page.bak
+  echo "Remove example config file..."
+  rm /usr/local/etc/proftpd.conf
+  echo "Symlink new config file..."
+  /bin/ln -s &plg;/proftpd.conf /etc/proftpd.conf
+else
+  /etc/rc.d/rc.proftpd start
+fi
+echo ""
+echo "*************************************************************"
+echo "* &plugin; plugin has been installed."
+echo "* Copyright 2013, &author;"
+echo "* Version: &plgver;"
+echo "*************************************************************"
+echo ""
+
+# Remove this install file - we are done!
+rm -f /tmp/proftpd-install
+</INLINE>
+</FILE>
+
+</PLUGIN>
