@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY plugin "ProFTPD">
 <!ENTITY author "SlrG">
-<!ENTITY plgver "0.5i">
+<!ENTITY plgver "0.5l">
 <!ENTITY pkg "/boot/packages">
 <!ENTITY pld "/boot/config/plugins/">
 <!ENTITY plg "/boot/config/plugins/proftpd">
@@ -37,7 +37,7 @@ Version history:
  2013-11-13 - version 0.5i : Fixed refresh of control panel plugin by adding sudo -u root to restart of inetd.
  2013-11-13 - version 0.5j : Added scripts to mount directories on array start and unmount them on array stop.
  2013-12-28 - version 0.5k : Removed SimpleFeatures recognition and added manual webserver configuration.
- 2013-12-28 - version 0.5i : Removed openssl to make the plugin v6b6 compatible.
+ 2013-12-28 - version 0.5l : Made the plugin v6b6 compatible.
 
 Plugin file locations:
  /boot/config/plugins/proftpd_v6.plg                                  # this file
